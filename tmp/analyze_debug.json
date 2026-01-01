@@ -1,0 +1,8 @@
+{
+    "success": false,
+    "message": "Prediction failed",
+    "exit_code": 1,
+    "stderr": "Traceback (most recent call last):\r\n  File \"C:\\xampp\\htdocs\\ShieldURL\\app\\predict_from_features.py\", line 56, in <module>\r\n    main()\r\n  File \"C:\\xampp\\htdocs\\ShieldURL\\app\\predict_from_features.py\", line 27, in main\r\n    model = joblib.load(MODEL_PATH)\r\n  File \"C:\\Users\\Aqilah\\AppData\\Local\\Programs\\Python\\Python39\\lib\\site-packages\\joblib\\numpy_pickle.py\", line 735, in load\r\n    with open(filename, \"rb\") as f:\r\nFileNotFoundError: [Errno 2] No such file or directory: 'model\/url_phishing_model.pkl'\r\n",
+    "stdout": "",
+    "cmd": "python \"C:\\xampp\\htdocs\\ShieldURL\\api\/..\/app\/predict_from_features.py\" \"{ UsingIP :0, LongURL :0, ShortURL :0, Symbol@ :0, Redirecting\\\/\\\/ :0, PrefixSuffix- :1, SubDomains :1, HTTPS :0, DomainRegLen :1, Favicon :0, NonStdPort :0, HTTPSDomainURL :0, RequestURL :0, AnchorURL :0, LinksInScriptTags :0, ServerFormHandler :0, InfoEmail :0, AbnormalURL :0, WebsiteForwarding :0, StatusBarCust :0, DisableRightClick :0, UsingPopupWindow :0, IframeRedirection :0, AgeofDomain :0, DNSRecording :0, WebsiteTraffic :0, PageRank :0, GoogleIndex :0, LinksPointingToPage :0, StatsReport :0}\""
+}
