@@ -1,9 +1,11 @@
 import json
 import sys
 import joblib
-import pandas as pd
+try:
+    from .features import MODEL_PATH, features_dataframe
+except ImportError:
+    from features import MODEL_PATH, features_dataframe
 
-MODEL_PATH = "model/url_phishing_model.pkl"
 
 def main():
     # Read JSON passed from PHP (1 argument)
@@ -28,12 +30,12 @@ def main():
 
     model = joblib.load(MODEL_PATH)
 
-    X = pd.DataFrame([features])
-    pred = model.predict(X)[0]     # will be 1 or -1
-
-    # IMPORTANT: dataset meaning
-    # 1 = Legitimate, -1 = Phishing
-    result = "LEGITIMATE" if int(pred) == 1 else "PHISHING"
+    expected_columns = list(getattr(model, "feature_names_in_", [])) or list(
+        getattr(model, "feature_columns_", [])
+    )
+    X = features_dataframe(features, expected_columns or None)
+    pred = model.predict(X)[0]
+    result = "PHISHING" if int(pred) == 1 else "LEGITIMATE"
     print(result)
 
 if __name__ == "__main__":

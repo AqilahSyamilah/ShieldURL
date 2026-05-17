@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/db.php';
+require_once '../shared/audit.php';
 
 // Ensure user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -38,9 +39,10 @@ try {
     $conn = $db->getConnection();
 
     // Check if user exists
-    $stmt = $conn->prepare("SELECT id FROM users WHERE id = :id");
+    $stmt = $conn->prepare("SELECT id, username, role, department FROM users WHERE id = :id");
     $stmt->execute([':id' => $userIdToDelete]);
-    if ($stmt->rowCount() === 0) {
+    $targetUser = $stmt->fetch();
+    if (!$targetUser) {
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'User not found']);
         exit();
@@ -49,6 +51,7 @@ try {
     // Delete user (Cascades to logs based on DB schema)
     $stmt = $conn->prepare("DELETE FROM users WHERE id = :id");
     $stmt->execute([':id' => $userIdToDelete]);
+    audit_log($conn, 'admin_disable_user', "Deleted/disabled user '{$targetUser['username']}' (ID {$targetUser['id']})", 'success');
 
     echo json_encode(['success' => true, 'message' => 'User deleted successfully']);
 

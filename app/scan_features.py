@@ -1,13 +1,18 @@
 import joblib
-import pandas as pd
+try:
+    from .features import MODEL_PATH, features_dataframe
+except ImportError:
+    from features import MODEL_PATH, features_dataframe
 
-MODEL_PATH = "model/url_phishing_model.pkl"
 
 def scan_from_features(features: dict):
     model = joblib.load(MODEL_PATH)
-    df = pd.DataFrame([features])
+    expected_columns = list(getattr(model, "feature_names_in_", [])) or list(
+        getattr(model, "feature_columns_", [])
+    )
+    df = features_dataframe(features, expected_columns or None)
     pred = model.predict(df)[0]
-    return "LEGITIMATE" if int(pred) == 1 else "PHISHING"
+    return "PHISHING" if int(pred) == 1 else "LEGITIMATE"
 
 if __name__ == "__main__":
     # Example input (you must provide values for all feature columns)

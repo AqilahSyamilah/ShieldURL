@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 class Database
 {
@@ -56,6 +58,11 @@ class Database
             phone VARCHAR(20),
             department VARCHAR(50),
             is_active BOOLEAN DEFAULT TRUE,
+            account_status ENUM('active','pending_first_login','inactive') DEFAULT 'active',
+            force_password_change BOOLEAN DEFAULT FALSE,
+            mfa_secret VARCHAR(64) NULL,
+            mfa_required BOOLEAN DEFAULT FALSE,
+            mfa_configured BOOLEAN DEFAULT FALSE,
             registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP NULL,
             last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -75,7 +82,9 @@ class Database
             -- New Fields for Incident Response
             llm_summary TEXT,
             mitre_attack_json JSON,
+            nist_response_json JSON,
             incident_response_text TEXT,
+            user_advisory_text TEXT,
             pdf_report_path VARCHAR(255),
             
             matched_dataset BOOLEAN DEFAULT FALSE,
@@ -93,6 +102,38 @@ class Database
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB";
 
+        $queries[] = "CREATE TABLE IF NOT EXISTS audit_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            user_id INT NULL,
+            username VARCHAR(100),
+            role VARCHAR(50),
+            division VARCHAR(100),
+            activity_type VARCHAR(80) NOT NULL,
+            activity_details TEXT,
+            ip_address VARCHAR(45),
+            country VARCHAR(100),
+            status VARCHAR(30) NOT NULL,
+            session_id VARCHAR(128),
+            INDEX idx_audit_timestamp (timestamp),
+            INDEX idx_audit_activity (activity_type),
+            INDEX idx_audit_division (division),
+            INDEX idx_audit_country (country),
+            INDEX idx_audit_user (user_id)
+        ) ENGINE=InnoDB";
+
+        $queries[] = "CREATE TABLE IF NOT EXISTS chat_history (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            scan_id INT NOT NULL,
+            user_question TEXT NOT NULL,
+            answer_status VARCHAR(50) NOT NULL,
+            llm_latency_ms INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (scan_id) REFERENCES url_logs(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB";
+
         foreach ($queries as $sql) {
             $this->conn->exec($sql);
         }
@@ -107,8 +148,15 @@ class Database
             "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS risk_level ENUM('low', 'medium', 'high') DEFAULT 'low'",
             "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS llm_summary TEXT",
             "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS mitre_attack_json JSON",
+            "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS nist_response_json JSON",
             "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS incident_response_text TEXT",
-            "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS pdf_report_path VARCHAR(255)"
+            "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS user_advisory_text TEXT",
+            "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS pdf_report_path VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status ENUM('active','pending_first_login','inactive') DEFAULT 'active'",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_secret VARCHAR(64) NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_required BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_configured BOOLEAN DEFAULT FALSE"
         ];
 
         foreach ($alter_queries as $sql) {
@@ -119,6 +167,25 @@ class Database
             } catch (Exception $e) {
                 // Ignore column exists error
             }
+        }
+
+        $this->addColumnIfMissing('users', 'account_status', "ENUM('active','pending_first_login','inactive') DEFAULT 'active'");
+        $this->addColumnIfMissing('users', 'force_password_change', "BOOLEAN DEFAULT FALSE");
+        $this->addColumnIfMissing('users', 'mfa_secret', "VARCHAR(64) NULL");
+        $this->addColumnIfMissing('users', 'mfa_required', "BOOLEAN DEFAULT FALSE");
+        $this->addColumnIfMissing('users', 'mfa_configured', "BOOLEAN DEFAULT FALSE");
+    }
+
+    private function addColumnIfMissing($table, $column, $definition)
+    {
+        $stmt = $this->conn->prepare("
+            SELECT COUNT(*) AS column_count
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?
+        ");
+        $stmt->execute([$this->db_name, $table, $column]);
+        if ((int)$stmt->fetch()['column_count'] === 0) {
+            $this->conn->exec("ALTER TABLE {$table} ADD COLUMN {$column} {$definition}");
         }
     }
 

@@ -13,7 +13,7 @@ $conn = $db->getConnection();
 $stmt = $conn->prepare("
     SELECT 
         id, full_name, username, email, phone,
-        department, role, is_active,
+        department, role, is_active, account_status, force_password_change, mfa_required, mfa_configured,
         DATE_FORMAT(registered_at, '%Y-%m-%d %H:%i:%s') AS registered_at,
         DATE_FORMAT(last_login, '%Y-%m-%d %H:%i:%s') AS last_login
     FROM users

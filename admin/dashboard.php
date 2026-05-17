@@ -9,14 +9,69 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 $db = new Database();
 $conn = $db->getConnection();
+
+$authStmt = $conn->prepare("SELECT force_password_change, mfa_required, mfa_configured FROM users WHERE id=? AND is_active=TRUE LIMIT 1");
+$authStmt->execute([$_SESSION['user_id']]);
+$authUser = $authStmt->fetch();
+if (!$authUser) {
+    session_destroy();
+    header("Location: ../auth/login.php?err=User not found");
+    exit();
+}
+$_SESSION['force_password_change'] = (bool)$authUser['force_password_change'];
+$_SESSION['mfa_required'] = (bool)$authUser['mfa_required'];
+$_SESSION['mfa_configured'] = (bool)$authUser['mfa_configured'];
+if ($_SESSION['force_password_change']) {
+    header("Location: ../auth/change_password.php?first_login=1");
+    exit();
+}
+if ($_SESSION['mfa_required'] && !$_SESSION['mfa_configured']) {
+    header("Location: ../auth/mfa_setup.php");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Admin Dashboard - ShieldURL</title>
-    <link rel="stylesheet" href="/ShieldURL/asset/style.css">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .dashboard {
+            background: #f7fafc;
+            min-height: 100vh;
+        }
+        .dashboard header {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .logout-btn {
+            background: #fc8181;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .logout-btn:hover {
+            background: #f56565;
+        }
         .admin-nav {
             background: #2d3748;
             padding: 15px;
@@ -195,11 +250,6 @@ $conn = $db->getConnection();
                         </div>
                         
                         <div class="form-group">
-                            <label for="username">Username *</label>
-                            <input type="text" id="username" name="username" required>
-                        </div>
-                        
-                        <div class="form-group">
                             <label for="email">Email *</label>
                             <input type="email" id="email" name="email" required>
                         </div>
@@ -229,15 +279,8 @@ $conn = $db->getConnection();
                                 <option value="admin">Administrator</option>
                             </select>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="password">Password *</label>
-                            <input type="password" id="password" name="password" required minlength="6">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="confirm_password">Confirm Password *</label>
-                            <input type="password" id="confirm_password" name="confirm_password" required>
+                        <div class="form-group full-width">
+                            <p style="margin: 0; color: #4a5568;">ShieldURL will generate a temporary password, email it to the user, and require password change plus email code verification at first login.</p>
                         </div>
                         
                         <div class="form-group full-width">
@@ -260,6 +303,29 @@ $conn = $db->getConnection();
     </div>
     
     <script>
+        async function parseJsonResponse(response) {
+            const text = await response.text();
+            console.log('Raw response:', text);
+
+            let data = null;
+            if (text.trim() !== '') {
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    throw new Error('Backend did not return valid JSON: ' + text);
+                }
+            }
+
+            if (!response.ok) {
+                throw new Error(
+                    (data && (data.error || data.detail || data.message)) ||
+                    ('Request failed with status ' + response.status)
+                );
+            }
+
+            return data;
+        }
+
         // Global variables
         let currentView = 'registration';
         
@@ -283,7 +349,7 @@ $conn = $db->getConnection();
         async function loadStatistics() {
             try {
                 const response = await fetch('../api/admin_stats.php');
-                const data = await response.json();
+                const data = await parseJsonResponse(response);
                 
                 document.getElementById('totalUsers').textContent = data.total_users || 0;
                 document.getElementById('activeUsers').textContent = data.active_users || 0;
@@ -297,7 +363,7 @@ $conn = $db->getConnection();
         async function loadUsers() {
             try {
                 const response = await fetch('../api/get_users.php');
-                const data = await response.json();
+                const data = await parseJsonResponse(response);
                 
                 if (data.length > 0) {
                     let html = `
@@ -331,7 +397,7 @@ $conn = $db->getConnection();
                                 <td>${user.email}</td>
                                 <td>${user.role}</td>
                                 <td>${user.department || '-'}</td>
-                                <td class="${statusClass}">${statusText}</td>
+                                <td class="${statusClass}">${user.account_status || statusText}</td>
                                 <td>${registeredDate}</td>
                                 <td>
                                     <div class="action-buttons">
@@ -361,26 +427,11 @@ $conn = $db->getConnection();
             // Get form data
             const formData = {
                 full_name: document.getElementById('full_name').value,
-                username: document.getElementById('username').value,
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value,
                 department: document.getElementById('department').value,
-                role: document.getElementById('role').value,
-                password: document.getElementById('password').value,
-                confirm_password: document.getElementById('confirm_password').value
+                role: document.getElementById('role').value
             };
-            
-            // Validate passwords match
-            if (formData.password !== formData.confirm_password) {
-                showMessage('Passwords do not match!', 'error');
-                return;
-            }
-            
-            // Validate password strength
-            if (formData.password.length < 6) {
-                showMessage('Password must be at least 6 characters long!', 'error');
-                return;
-            }
             
             // Show loading
             showMessage('Registering user...', 'loading');
@@ -394,7 +445,7 @@ $conn = $db->getConnection();
                     body: JSON.stringify(formData)
                 });
                 
-                const result = await response.json();
+                const result = await parseJsonResponse(response);
                 
                 if (result.success) {
                     showMessage(result.message, 'success');
@@ -406,7 +457,7 @@ $conn = $db->getConnection();
                         loadUsers();
                     }
                 } else {
-                    showMessage(result.error || 'Registration failed!', 'error');
+                    showMessage(result.message || 'Registration failed!', 'error');
                 }
             } catch (error) {
                 console.error('Error registering user:', error);

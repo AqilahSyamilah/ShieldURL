@@ -2,6 +2,14 @@
 require_once '../config/db.php';
 
 if (isset($_SESSION['user_id'])) {
+  if (!empty($_SESSION['force_password_change'])) {
+    header("Location: change_password.php?first_login=1");
+    exit();
+  }
+  if (!empty($_SESSION['mfa_required']) && empty($_SESSION['mfa_configured'])) {
+    header("Location: mfa_setup.php");
+    exit();
+  }
   if ($_SESSION['role'] === 'admin') {
     header("Location: ../admin/index.php");
   } else {
@@ -17,8 +25,15 @@ if (isset($_SESSION['user_id'])) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - ShieldURL</title>
-  <link rel="stylesheet" href="../asset/style.css">
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+    }
+
     .login-wrapper {
       min-height: 100vh;
       display: flex;
@@ -245,8 +260,8 @@ if (isset($_SESSION['user_id'])) {
 
       <form method="POST" action="login_process.php" id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
-          <label for="username">Username</label>
-          <input type="text" id="username" name="username" placeholder="Enter your username" required
+          <label for="username">Email or Username</label>
+          <input type="text" id="username" name="username" placeholder="Enter your email or username" required
             autocomplete="username">
         </div>
 
@@ -262,13 +277,15 @@ if (isset($_SESSION['user_id'])) {
         </button>
       </form>
 
-      <div class="login-footer">
-        <p>Demo Credentials</p>
-        <div class="demo-creds">
-          <p><strong>Admin</strong><br>Username: <code>admin</code><br>Password: <code>admin123</code></p>
-          <p><strong>User</strong><br>Username: <code>aqilah</code><br>Password: <code>123456</code></p>
-        </div>
-      </div>
+<!--
+<div class="login-footer">
+  <p>Demo Credentials</p>
+  <div class="demo-creds">
+    <p><strong>Admin</strong><br>Username: <code>admin</code><br>Password: <code>admin123</code></p>
+    <p><strong>User</strong><br>Username: <code>aqilah</code><br>Password: <code>123456</code></p>
+  </div>
+</div>
+-->
     </div>
   </div>
 

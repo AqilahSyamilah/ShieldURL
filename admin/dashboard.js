@@ -1,6 +1,29 @@
+async function parseJsonResponse(response) {
+  const text = await response.text();
+  console.log("Raw response:", text);
+
+  let data = null;
+  if (text.trim() !== "") {
+    try {
+      data = JSON.parse(text);
+    } catch (error) {
+      throw new Error("Backend did not return valid JSON: " + text);
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      (data && (data.error || data.detail || data.message)) ||
+      ("Request failed with status " + response.status)
+    );
+  }
+
+  return data;
+}
+
 async function loadUsers() {
   const res = await fetch("../api/get_users.php", { credentials: "same-origin" });
-  const users = await res.json();
+  const users = await parseJsonResponse(res);
 
   const container = document.getElementById("usersTable");
   if (!users || users.length === 0) {
@@ -37,9 +60,7 @@ document.getElementById("registerUserForm").addEventListener("submit", async (e)
   const form = e.target;
   const data = {
     full_name: form.full_name.value.trim(),
-    username: form.username.value.trim(),
     email: form.email.value.trim(),
-    password: form.password.value,
     phone: form.phone.value.trim() || null,
     department: form.department.value.trim() || null,
     role: form.role.value
@@ -52,15 +73,17 @@ document.getElementById("registerUserForm").addEventListener("submit", async (e)
     body: JSON.stringify(data)
   });
 
-  const result = await res.json();
+  const result = await parseJsonResponse(res);
   const out = document.getElementById("registerResult");
 
   if (result.success) {
-    out.innerHTML = `<p style="color:green;">${result.message}</p>`;
+    out.textContent = result.message;
+    out.style.color = "green";
     form.reset();
     await loadUsers();
   } else {
-    out.innerHTML = `<p style="color:red;">${result.error}</p>`;
+    out.textContent = result.message || "Registration failed";
+    out.style.color = "red";
   }
 });
 

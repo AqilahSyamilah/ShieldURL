@@ -1,0 +1,573 @@
+
+[2026-04-26T15:10:28+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Accept: */*
+Content-Type: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Sun, 26 Apr 2026 13:10:27 GMT
+< server: uvicorn
+< content-length: 1967
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=120.94481
+
+[2026-04-26T15:38:33+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+* Operation timed out after 90004 milliseconds with 0 bytes received
+* Closing connection
+curl_errno=28 curl_error=Operation timed out after 90004 milliseconds with 0 bytes received http_code=0 total=90.012172
+
+[2026-04-26T15:43:21+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Sun, 26 Apr 2026 13:43:20 GMT
+< server: uvicorn
+< content-length: 1967
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=121.532948
+
+[2026-04-26T15:54:06+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+
+[2026-04-26T15:56:27+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Sun, 26 Apr 2026 13:56:27 GMT
+< server: uvicorn
+< content-length: 2858
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=110.732179
+
+[2026-04-26T16:05:23+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Sun, 26 Apr 2026 14:05:22 GMT
+< server: uvicorn
+< content-length: 1967
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=120.916188
+
+[2026-04-26T16:08:04+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Sun, 26 Apr 2026 14:08:04 GMT
+< server: uvicorn
+< content-length: 1967
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=121.189575
+
+[2026-04-27T10:51:22+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Mon, 27 Apr 2026 08:51:22 GMT
+< server: uvicorn
+< content-length: 5875
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=59.179239
+
+[2026-04-27T10:58:28+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Mon, 27 Apr 2026 08:58:28 GMT
+< server: uvicorn
+< content-length: 5874
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=45.978921
+
+[2026-05-07T05:20:28+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/paypal-security-update.com\/login","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 69
+
+< HTTP/1.1 200 OK
+< date: Thu, 07 May 2026 03:20:28 GMT
+< server: uvicorn
+< content-length: 4998
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=33.058866
+
+[2026-05-07T05:21:13+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Thu, 07 May 2026 03:21:12 GMT
+< server: uvicorn
+< content-length: 3794
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=43.470954
+
+[2026-05-07T05:23:22+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":true}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 69
+
+< HTTP/1.1 200 OK
+< date: Thu, 07 May 2026 03:23:22 GMT
+< server: uvicorn
+< content-length: 4231
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=29.067548
+
+[2026-05-07T05:26:23+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Thu, 07 May 2026 03:26:29 GMT
+< server: uvicorn
+< content-length: 4932
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=73.639527
+
+[2026-05-07T05:38:22+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Thu, 07 May 2026 03:38:21 GMT
+< server: uvicorn
+< content-length: 5702
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=72.906845
+
+[2026-05-11T10:37:12+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 08:37:11 GMT
+< server: uvicorn
+< content-length: 5559
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=96.074903
+
+[2026-05-11T10:53:50+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":true}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 69
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 08:53:50 GMT
+< server: uvicorn
+< content-length: 6198
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=60.851642
+
+[2026-05-11T11:22:01+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 09:22:00 GMT
+< server: uvicorn
+< content-length: 5814
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=73.570633
+
+[2026-05-11T11:26:30+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":true}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 69
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 09:26:30 GMT
+< server: uvicorn
+< content-length: 5936
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=42.137921
+
+[2026-05-11T11:32:46+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":true}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 69
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 09:32:45 GMT
+< server: uvicorn
+< content-length: 5915
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=67.857425
+
+[2026-05-11T11:46:42+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 09:46:42 GMT
+< server: uvicorn
+< content-length: 5866
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=66.20646
+
+[2026-05-11T12:03:06+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 10:03:06 GMT
+< server: uvicorn
+< content-length: 6264
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=94.594433
+
+[2026-05-11T12:06:46+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 10:06:45 GMT
+< server: uvicorn
+< content-length: 6461
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=66.318585
+
+[2026-05-11T12:18:56+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":null}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 69
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 10:18:56 GMT
+< server: uvicorn
+< content-length: 5981
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=62.811718
+
+[2026-05-11T12:27:00+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":null}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 69
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 10:27:00 GMT
+< server: uvicorn
+< content-length: 6107
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=61.937713
+
+[2026-05-11T12:47:17+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":true}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 69
+
+< HTTP/1.1 200 OK
+< date: Mon, 11 May 2026 10:47:17 GMT
+< server: uvicorn
+< content-length: 6533
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=70.676423
+
+[2026-05-13T07:18:50+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Wed, 13 May 2026 05:18:50 GMT
+< server: uvicorn
+< content-length: 6222
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=73.707685
+
+[2026-05-13T07:30:07+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Wed, 13 May 2026 05:30:06 GMT
+< server: uvicorn
+< content-length: 6129
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=70.527017
+
+[2026-05-13T07:39:11+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Wed, 13 May 2026 05:39:11 GMT
+< server: uvicorn
+< content-length: 5676
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=73.626868
+
+[2026-05-13T07:52:52+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Wed, 13 May 2026 05:52:53 GMT
+< server: uvicorn
+< content-length: 5717
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=60.474553
+
+[2026-05-13T07:56:29+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Wed, 13 May 2026 05:56:28 GMT
+< server: uvicorn
+< content-length: 5890
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=55.122957
+
+[2026-05-13T08:00:50+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Wed, 13 May 2026 06:00:49 GMT
+< server: uvicorn
+< content-length: 6438
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=52.877737
+
+[2026-05-17T11:36:48+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Sun, 17 May 2026 09:36:48 GMT
+< server: uvicorn
+< content-length: 3367
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=40.698022
+
+[2026-05-17T11:43:22+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 70
+
+< HTTP/1.1 200 OK
+< date: Sun, 17 May 2026 09:43:22 GMT
+< server: uvicorn
+< content-length: 6022
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=69.802213

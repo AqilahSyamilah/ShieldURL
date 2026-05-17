@@ -1,47 +1,77 @@
-print("Training script started...")
+import json
 
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
 import joblib
-import os
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+
+try:
+    from .features import DATASET_PATH, FEATURE_COLUMNS, MODEL_PATH, load_clean_dataset
+except ImportError:
+    from features import DATASET_PATH, FEATURE_COLUMNS, MODEL_PATH, load_clean_dataset
+
+
+def resolve_label_mapping(series):
+    labels = sorted(set(int(value) for value in series.unique()))
+    if set(labels) == {-1, 1}:
+        phishing_label = -1
+        legitimate_label = 1
+    elif set(labels) == {0, 1}:
+        phishing_label = 1
+        legitimate_label = 0
+    else:
+        raise ValueError(f"Unexpected label values: {labels}")
+    y = (series.astype(int) == phishing_label).astype(int)
+    return y, phishing_label, legitimate_label
+
 
 def main():
-    # Define paths relative to this script
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(current_dir, '..', 'data', 'phishing.csv')
-    model_path = os.path.join(current_dir, '..', 'model', 'url_phishing_model.pkl')
+    df, target_column = load_clean_dataset(DATASET_PATH)
+    X = df[FEATURE_COLUMNS].copy()
+    y, phishing_label, legitimate_label = resolve_label_mapping(df[target_column])
 
-    print(f"Loading dataset from: {csv_path}")
-    if not os.path.exists(csv_path):
-        print("Error: Dataset not found!")
-        return
-
-    df = pd.read_csv(csv_path)
-    
-    print("Columns found:", list(df.columns))
-
-    # Label column
-    y = df["class"]
-
-    # Feature columns (drop non-features)
-    X = df.drop(columns=["class", "Index"], errors="ignore")
-
-    print("Training model...")
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y,
     )
 
-    model = LogisticRegression(max_iter=2000)
+    model = RandomForestClassifier(
+        n_estimators=400,
+        random_state=42,
+        n_jobs=-1,
+        class_weight="balanced",
+    )
     model.fit(X_train, y_train)
 
-    preds = model.predict(X_test)
-    acc = accuracy_score(y_test, preds)
-    print(f"Accuracy: {acc:.4f}")
+    predictions = model.predict(X_test)
+    accuracy = accuracy_score(y_test, predictions)
 
-    joblib.dump(model, model_path)
-    print(f"Model saved to: {model_path}")
+    model.feature_columns_ = FEATURE_COLUMNS
+    model.target_column_ = target_column
+    model.source_dataset_ = DATASET_PATH
+    model.phishing_label_ = phishing_label
+    model.legitimate_label_ = legitimate_label
+    model.phishing_class_ = 1
+    model.legitimate_class_ = 0
+    model.test_accuracy_ = accuracy
+
+    joblib.dump(model, MODEL_PATH)
+
+    summary = {
+        "dataset_path": DATASET_PATH,
+        "model_path": MODEL_PATH,
+        "target_column": target_column,
+        "accuracy": accuracy,
+        "feature_count": len(FEATURE_COLUMNS),
+        "features": FEATURE_COLUMNS,
+        "confusion_matrix": confusion_matrix(y_test, predictions).tolist(),
+        "classification_report": classification_report(y_test, predictions, digits=4, output_dict=True),
+    }
+    print(json.dumps(summary, indent=2))
+
 
 if __name__ == "__main__":
     main()
