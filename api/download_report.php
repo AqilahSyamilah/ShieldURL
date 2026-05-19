@@ -200,6 +200,9 @@ $url = $report['url'] ?? '';
 [$domain, $tld, $subdomainCount] = domain_parts($url);
 
 $status = strtolower((string)($report['status'] ?? 'safe'));
+$displayStatus = $analysis['display_status'] ?? (($status === 'phishing' && (($analysis['confidence_score'] ?? $report['confidence_score'] ?? 0) < 0.70)) ? 'potentially suspicious' : $status);
+$displayStatusNormalized = strtolower((string)$displayStatus);
+$threatStatusClass = strpos($displayStatusNormalized, 'suspicious') !== false ? 'suspicious' : $status;
 $confidenceRaw = (float)($report['confidence_score'] ?? 0);
 $confidence = $confidenceRaw <= 1 ? $confidenceRaw * 100 : $confidenceRaw;
 $confidenceNormalized = max(0, min(1, $confidence / 100));
@@ -207,7 +210,14 @@ $riskLevel = $report['risk_level'] ?? 'low';
 $severity = severity_from($status, $riskLevel, $confidenceNormalized);
 $riskScore = number_format($confidenceNormalized * 10, 1);
 $scanDuration = $analysis['debug']['php_total_seconds'] ?? $analysis['debug']['curl_total_seconds'] ?? 'N/A';
-$engine = 'ShieldURL ML + LLM Incident Response';
+$engine = 'ShieldURL URL Detection + Incident Response';
+$modelPolicy = $analysis['model_policy'] ?? 'The system uses advanced URL detection analysis to identify suspicious website patterns.';
+if (preg_match('/lexical model|false negatives|threshold|recall/i', (string)$modelPolicy)) {
+    $modelPolicy = 'The system uses advanced URL detection analysis to identify suspicious website patterns.';
+}
+$selectedThresholdRaw = (float)($analysis['selected_threshold'] ?? ($analysis['ml']['selected_threshold'] ?? 0.5));
+$selectedThreshold = $selectedThresholdRaw <= 1 ? $selectedThresholdRaw * 100 : $selectedThresholdRaw;
+$systemDetection = strtoupper($status);
 $protocol = parse_url($url, PHP_URL_SCHEME) ?: 'http';
 $httpsStatus = $protocol === 'https' ? 'Valid HTTPS' : 'Non-HTTPS';
 $keywords = suspicious_keywords_from_url($url);
@@ -232,14 +242,27 @@ if (indicator_detected($redirectFound)) {
     $riskIndicators[] = 'Redirect Detected';
 }
 $userAdvisory = $report['user_advisory_text'] ?: 'Do not enter credentials, OTP, banking information, or personal data. Report this URL to IT/security.';
+if ($displayStatusNormalized === 'potentially suspicious') {
+    $userAdvisory = 'Suspicious signals were detected, but this URL is not confirmed as phishing. Review the URL carefully and verify the destination before entering credentials or sensitive information.';
+}
 
 $executiveSummary = normalize_list($report['llm_summary'] ?? '');
+if ($displayStatusNormalized === 'potentially suspicious') {
+    $executiveSummary = [
+        'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.',
+    ];
+}
 if (empty($executiveSummary)) {
     if ($status === 'phishing') {
         $executiveSummary = [
-            'Threat likely attempts credential harvesting or user deception.',
+            $displayStatusNormalized === 'potentially suspicious'
+                ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
+                : 'Threat likely attempts credential harvesting or user deception.',
             'Suspicious domain or URL indicators were detected during analysis.',
-            'Users may be redirected to fake login portals or unsafe pages.',
+            'The system uses advanced URL detection analysis to identify suspicious website patterns.',
+            $displayStatusNormalized === 'potentially suspicious'
+                ? 'Review the URL carefully and verify the destination before entering credentials or sensitive information.'
+                : 'Users may be redirected to fake login portals or unsafe pages.',
         ];
     } elseif ($status === 'suspicious') {
         $executiveSummary = [
@@ -254,6 +277,9 @@ if (empty($executiveSummary)) {
             'Users should still avoid sharing credentials unless the destination is trusted.',
         ];
     }
+}
+if (!in_array($modelPolicy, $executiveSummary, true)) {
+    $executiveSummary[] = $modelPolicy;
 }
 
 $timeline = [
@@ -929,23 +955,36 @@ $timeline = [
 
         <section class="report-body">
             <div class="threat-card">
-                <div class="threat-status <?php echo h($status); ?>">
-                    <div class="threat-icon"><?php echo h(status_icon($status)); ?></div>
+                <div class="threat-status <?php echo h($threatStatusClass); ?>">
+                    <div class="threat-icon"><?php echo h(status_icon($threatStatusClass)); ?></div>
                     <div>
                         <p class="eyebrow">Threat Status</p>
-                        <h2><?php echo h(strtoupper($status)); ?></h2>
+                        <h2><?php echo h(strtoupper($displayStatus)); ?></h2>
                     </div>
                     <span class="severity-badge">Severity: <?php echo h($severity); ?></span>
                 </div>
                 <div class="metric-grid">
-                    <div class="metric"><div class="metric-label">Confidence</div><div class="metric-value"><?php echo h(number_format($confidence, 1)); ?>%</div></div>
+                    <div class="metric"><div class="metric-label">Phishing Probability</div><div class="metric-value"><?php echo h(number_format($confidence, 2)); ?>%</div></div>
                     <div class="metric"><div class="metric-label">Risk Level</div><div class="metric-value"><?php echo h(ucfirst((string)$riskLevel)); ?></div></div>
                     <div class="metric"><div class="metric-label">Risk Score</div><div class="metric-value"><?php echo h($riskScore); ?>/10</div></div>
                     <div class="metric"><div class="metric-label">Scan Duration</div><div class="metric-value"><?php echo h(is_numeric($scanDuration) ? $scanDuration . 's' : $scanDuration); ?></div></div>
                     <div class="metric"><div class="metric-label">Detection Engine</div><div class="metric-value"><?php echo h($engine); ?></div></div>
-                    <div class="metric"><div class="metric-label">Report Type</div><div class="metric-value">Incident Response</div></div>
+                    <div class="metric"><div class="metric-label">How ShieldURL Decides</div><div class="metric-value"><?php echo h($modelPolicy); ?></div></div>
                 </div>
             </div>
+
+            <section class="section-card">
+                <h2 class="section-title">Scan Decision Explanation</h2>
+                <div class="metric-grid">
+                    <div class="metric"><div class="metric-label">Phishing Probability</div><div class="metric-value"><?php echo h(number_format($confidence, 2)); ?>%</div></div>
+                    <div class="metric"><div class="metric-label">Detection Sensitivity</div><div class="metric-value"><?php echo h(number_format($selectedThreshold, 2)); ?>%</div></div>
+                    <div class="metric"><div class="metric-label">System Detection</div><div class="metric-value"><?php echo h($systemDetection); ?></div></div>
+                    <div class="metric"><div class="metric-label">Safety Status</div><div class="metric-value"><?php echo h(strtoupper($displayStatus)); ?></div></div>
+                </div>
+                <p style="margin: 0.85rem 0 0; color: #475569;">
+                    <?php echo h($modelPolicy); ?> Potentially suspicious results show suspicious characteristics, but are not confirmed phishing based on the current evidence. Review the URL carefully before interacting with it.
+                </p>
+            </section>
 
             <section class="section-card">
                 <h2 class="section-title">URL Evidence</h2>

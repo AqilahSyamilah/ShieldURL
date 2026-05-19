@@ -2338,7 +2338,7 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
         function mapRiskFromStatus(status) {
             const normalized = String(status || '').toLowerCase();
             if (normalized === 'phishing') return 'High Risk';
-            if (normalized === 'suspicious') return 'Medium Risk';
+            if (normalized === 'suspicious' || normalized.includes('suspicious')) return 'Medium Risk';
             return 'Low Risk';
         }
 
@@ -2449,6 +2449,11 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                 mitrePrimary: document.getElementById('mitrePrimaryValue').textContent,
                 resultUrlHref: document.getElementById('resultUrl').href,
                 resultUrlText: document.getElementById('resultUrl').textContent,
+                modelPhishingProbability: document.getElementById('modelPhishingProbability').textContent,
+                modelSelectedThreshold: document.getElementById('modelSelectedThreshold').textContent,
+                modelFinalVerdict: document.getElementById('modelFinalVerdict').textContent,
+                modelDisplayVerdict: document.getElementById('modelDisplayVerdict').textContent,
+                modelPolicyText: document.getElementById('modelPolicyText').textContent,
                 incidentSummary: document.getElementById('llmSummary').textContent,
                 analyzedTime: document.getElementById('analyzedTime').textContent,
                 analysisDetails: document.getElementById('analysisDetails').textContent,
@@ -2492,6 +2497,11 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
             document.getElementById('mitrePrimaryValue').textContent = snap.mitrePrimary;
             document.getElementById('resultUrl').href = snap.resultUrlHref;
             document.getElementById('resultUrl').textContent = snap.resultUrlText;
+            document.getElementById('modelPhishingProbability').textContent = snap.modelPhishingProbability || 'Not Collected';
+            document.getElementById('modelSelectedThreshold').textContent = snap.modelSelectedThreshold || 'Not Collected';
+            document.getElementById('modelFinalVerdict').textContent = snap.modelFinalVerdict || 'UNKNOWN';
+            document.getElementById('modelDisplayVerdict').textContent = snap.modelDisplayVerdict || 'UNKNOWN';
+            document.getElementById('modelPolicyText').textContent = simplePolicyText(snap.modelPolicyText);
             document.getElementById('llmSummary').textContent = snap.incidentSummary;
             document.getElementById('analyzedTime').textContent = snap.analyzedTime;
             document.getElementById('analysisDetails').textContent = snap.analysisDetails;
@@ -2571,6 +2581,28 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
             const numeric = Number(value || 0);
             const percent = numeric <= 1 ? numeric * 100 : numeric;
             return Number.isFinite(percent) ? percent.toFixed(2) + '%' : 'Not Collected';
+        }
+
+        function simplePolicyText(value) {
+            const text = String(value || '').trim();
+            if (!text || /lexical model|false negatives|threshold|recall/i.test(text)) {
+                return 'The system uses advanced URL detection analysis to identify suspicious website patterns.';
+            }
+            return text;
+        }
+
+        function updateModelDecisionExplanation(data) {
+            const probability = data?.phishing_probability ?? data?.ml?.phishing_probability ?? data?.detection?.phishing_probability ?? data?.confidence_score ?? data?.detection?.confidence_score;
+            const threshold = data?.selected_threshold ?? data?.ml?.selected_threshold ?? data?.detection?.lexical_threshold;
+            const finalVerdict = data?.status ?? data?.detection?.final_verdict ?? data?.overall?.status ?? 'unknown';
+            const displayVerdict = data?.display_status ?? data?.overall?.display_verdict ?? data?.detection?.display_verdict ?? finalVerdict;
+            const policy = simplePolicyText(data?.model_policy ?? data?.overall?.model_policy ?? data?.ml?.model_policy ?? data?.detection?.model_policy);
+
+            document.getElementById('modelPhishingProbability').textContent = formatConfidenceValue(probability);
+            document.getElementById('modelSelectedThreshold').textContent = threshold === undefined || threshold === null || threshold === '' ? 'Not Collected' : formatConfidenceValue(threshold);
+            document.getElementById('modelFinalVerdict').textContent = String(finalVerdict).replaceAll('_', ' ').toUpperCase();
+            document.getElementById('modelDisplayVerdict').textContent = String(displayVerdict).replaceAll('_', ' ').toUpperCase();
+            document.getElementById('modelPolicyText').textContent = policy;
         }
 
         function formatScanDuration(value) {
@@ -2660,10 +2692,12 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
 
         function threatBehaviorBullets(detail) {
             const status = String(detail.status || '').toLowerCase();
+            const display = String(detail.display_status || detail.display_verdict || '').toLowerCase();
             const evidenceHtml = scanEvidenceBadges(detail);
             const evidenceLabels = Array.from(evidenceHtml.matchAll(/<span class="badge suspicious">([^<]+)<\/span>/g)).map(match => match[1]);
             const bullets = [];
-            if (status === 'phishing') bullets.push('Likely credential harvesting or impersonation attempt.');
+            if (display.includes('suspicious')) bullets.push('Suspicious signals detected, but this URL is not confirmed as phishing.');
+            else if (status === 'phishing') bullets.push('Likely credential harvesting or impersonation attempt.');
             if (status === 'suspicious') bullets.push('Suspicious URL indicators require review before user access.');
             if (evidenceLabels.includes('Non-HTTPS')) bullets.push('Connection does not use HTTPS.');
             if (evidenceLabels.includes('Possible Brand Impersonation')) bullets.push('URL contains terms commonly used in fake login or verification flows.');
@@ -2676,6 +2710,8 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
             const modal = document.getElementById('scanDetailModal');
             const body = document.getElementById('scanDetailBody');
             const status = String(detail.status || detail.final_verdict || '').toUpperCase();
+            const displayStatus = String(detail.display_status || detail.display_verdict || status);
+            const displayClass = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : String(detail.status || '').toLowerCase();
             const nistActions = normalizeToList(detail.nist_response).length ? detail.nist_response : detail.incident_response;
             const checkedUrl = displayValue(detail.url);
             const summary = displayValue(detail.llm_summary || detail.incidentSummary);
@@ -2685,7 +2721,8 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                     ${scanDetailRow('Timestamp', escapeHtml(displayValue(detail.analyzed_at || detail.timestamp)))}
                     ${scanDetailRow('User', escapeHtml(displayValue(detail.username || currentUsername)))}
                     ${scanDetailRow('Checked URL', `<span class="scan-detail-url" title="${escapeHtml(checkedUrl)}">${escapeHtml(checkedUrl)}</span>`)}
-                    ${scanDetailRow('Final Verdict', `<span class="badge ${escapeHtml(String(detail.status || '').toLowerCase())}">${escapeHtml(displayValue(status))}</span>`)}
+                    ${scanDetailRow('Safety Status', `<span class="badge ${escapeHtml(displayClass)}">${escapeHtml(displayValue(displayStatus).toUpperCase())}</span>`)}
+                    ${scanDetailRow('System Detection', escapeHtml(displayValue(status)))}
                     ${scanDetailRow('Risk Level', escapeHtml(displayValue(detail.risk_level)))}
                     ${scanDetailRow('Confidence Score', escapeHtml(formatConfidenceValue(detail.confidence_score ?? detail.confidence)))}
                     ${scanDetailRow('Scan Duration', escapeHtml(formatScanDuration(detail.scan_duration)))}
@@ -2757,15 +2794,26 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                     : '-';
 
                 const statusBadge = document.getElementById('statusBadge');
-                statusBadge.className = 'badge ' + status;
-                statusBadge.textContent = status.toUpperCase();
+                const detailDisplayStatus = detail.display_status || status;
+                const detailDisplayClass = String(detailDisplayStatus).toLowerCase().includes('suspicious') ? 'suspicious' : status;
+                statusBadge.className = 'badge ' + detailDisplayClass;
+                statusBadge.textContent = String(detailDisplayStatus).toUpperCase();
                 document.getElementById('confidenceScore').textContent = confidencePercent.toFixed(2) + '%';
                 document.getElementById('confidenceFill').style.width = Math.max(0, Math.min(100, confidencePercent)) + '%';
                 document.getElementById('riskLevelValue').textContent = riskLevel.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+                updateModelDecisionExplanation({
+                    phishing_probability: detail.phishing_probability ?? detail.confidence_score,
+                    selected_threshold: detail.selected_threshold,
+                    status: detail.status,
+                    display_status: detail.display_status,
+                    model_policy: detail.model_policy
+                });
                 document.getElementById('mitrePrimaryValue').textContent = mitrePrimary;
                 document.getElementById('resultUrl').href = detail.url || '#';
                 document.getElementById('resultUrl').textContent = detail.url || '-';
-                document.getElementById('llmSummary').textContent = detail.llm_summary || 'No incident summary available.';
+                document.getElementById('llmSummary').textContent = String(detail.display_status || '').toLowerCase().includes('potentially suspicious')
+                    ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
+                    : (detail.llm_summary || 'No incident summary available.');
                 document.getElementById('analysisDetails').textContent = JSON.stringify(detail.features || {}, null, 2);
                 document.getElementById('analyzedTime').textContent = detail.analyzed_at ? new Date(detail.analyzed_at).toLocaleString() : '-';
                 document.getElementById('userAdvisory').textContent = detail.user_advisory || 'No advisory available.';
@@ -2800,7 +2848,11 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                     checked_url: detail.url || '',
                     detection: {
                         final_verdict: status,
+                        display_verdict: detail.display_status || status,
                         confidence_score: Number(detail.confidence_score || 0),
+                        phishing_probability: Number(detail.phishing_probability ?? detail.confidence_score ?? 0),
+                        selected_threshold: Number(detail.selected_threshold ?? 0.5),
+                        model_policy: detail.model_policy || '',
                         risk_level: riskLevel
                     },
                     suspicious_indicators: normalizeToList(detail.incident_response),
@@ -2910,6 +2962,16 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
             return bubble;
         }
 
+        function getAssistantConversation() {
+            return Array.from(document.querySelectorAll('#assistantMessages .assistant-message'))
+                .filter(item => !item.classList.contains('notice'))
+                .slice(-6)
+                .map(item => ({
+                    role: item.classList.contains('user') ? 'user' : 'assistant',
+                    content: item.textContent || ''
+                }));
+        }
+
         function setAssistantEnabled(enabled) {
             const input = document.getElementById('assistantInput');
             const sendBtn = document.getElementById('assistantSendBtn');
@@ -2966,6 +3028,7 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
             const loadingBubble = appendAssistantMessage('assistant', 'ShieldURL Assistant is analyzing the scan context...');
 
             try {
+                const conversation = getAssistantConversation();
                 const response = await fetch('api/chat.php', {
                     method: 'POST',
                     headers: {
@@ -2973,8 +3036,11 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                     },
                     body: JSON.stringify({
                         scan_id: currentScanId,
-                        user_question: trimmed,
+                        message: trimmed,
+                        assistant_response_style: 'simple',
                         scan_context: currentScanContext,
+                        history: conversation,
+                        conversation,
                     }),
                 });
                 const result = await parseJsonResponse(response);
@@ -3109,17 +3175,19 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                     const llmResponse = result.llm_response && typeof result.llm_response === 'object' ? result.llm_response : {};
                     const llm = Object.keys(llmReport).length ? llmReport : (Object.keys(llmBridge).length ? llmBridge : llmResponse);
                     const aiUnavailable = (llm && llm.error) ? ' AI report unavailable or fallback used; detection result is still valid.' : '';
-                    resultDiv.textContent = 'Analysis completed.' + aiUnavailable;
+                    const modelPolicy = simplePolicyText(result.model_policy || result.overall?.model_policy || result.ml?.model_policy);
+                    resultDiv.textContent = 'Analysis completed. ' + modelPolicy + aiUnavailable;
 
                     // Update result display
                     const displayUrl = result.url || detection.url || url;
                     document.getElementById('resultUrl').href = displayUrl;
                     document.getElementById('resultUrl').textContent = displayUrl;
 
-                    const rawConfidence = Number(result.confidence_score ?? detection.confidence_score ?? 0);
+                    const rawConfidence = Number(result.phishing_probability ?? result.confidence_score ?? detection.phishing_probability ?? detection.confidence_score ?? 0);
                     const confidence = rawConfidence <= 1 ? rawConfidence * 100 : rawConfidence;
                     document.getElementById('confidenceScore').textContent = confidence.toFixed(2) + '%';
                     document.getElementById('confidenceFill').style.width = confidence + '%';
+                    updateModelDecisionExplanation(result);
                     const displayRisk = String(result.risk_level || detection.risk_level || result.overall?.risk_level || 'unknown')
                         .replaceAll('_', ' ')
                         .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -3238,17 +3306,23 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                         });
                     };
                     const fallbackIncidentSummary = () => {
-                        const verdict = String(result.overall?.verdict || result.overall?.status || detection.final_verdict || 'unknown').replaceAll('_', ' ').toLowerCase();
+                        const verdict = String(result.display_status || result.overall?.display_verdict || result.overall?.verdict || result.overall?.status || detection.display_verdict || detection.final_verdict || 'unknown').replaceAll('_', ' ').toLowerCase();
                         const risk = String(result.overall?.risk_level || detection.risk_level || 'unknown').toLowerCase();
-                        return `The submitted URL was classified as ${verdict} with ${risk} risk based on the supplied scan context. Detection result is still valid even though the AI report used a fallback response.`;
+                        if (verdict.includes('potentially suspicious')) {
+                            return 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.';
+                        }
+                        return `The submitted URL was classified as ${verdict} with ${risk} risk based on the supplied scan context. The system uses advanced URL detection analysis to identify suspicious website patterns.`;
                     };
-                    const fallbackUserAdvisory = 'Do not open this URL or enter login details, OTP, banking information, or personal data. Report it to IT/security.';
+                    const fallbackUserAdvisory = 'Review the URL carefully before interacting with it. Verify the destination before entering login details, OTP, banking information, or personal data.';
 
-                    const incidentSummary = pickFirst(
+                    const potentiallySuspiciousDisplay = String(result.display_status || result.overall?.display_verdict || detection.display_verdict || '').toLowerCase().includes('potentially suspicious');
+                    const incidentSummary = potentiallySuspiciousDisplay
+                        ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
+                        : (pickFirst(
                         llm.incident_summary,
                         llm.executive_summary,
                         result.llm_summary
-                    ) || fallbackIncidentSummary();
+                    ) || fallbackIncidentSummary());
                     document.getElementById('llmSummary').textContent = incidentSummary;
 
                     const containmentActions = collectList(
@@ -3352,7 +3426,11 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                         checked_url: displayUrl,
                         detection: {
                             final_verdict: result.status || detection.final_verdict || result.overall?.status || 'unknown',
-                            confidence_score: Number(result.confidence_score ?? detection.confidence_score ?? 0),
+                            display_verdict: result.display_status || result.overall?.display_verdict || detection.display_verdict || '',
+                            confidence_score: Number(result.phishing_probability ?? result.confidence_score ?? detection.phishing_probability ?? detection.confidence_score ?? 0),
+                            phishing_probability: Number(result.phishing_probability ?? detection.phishing_probability ?? 0),
+                            selected_threshold: Number(result.selected_threshold ?? result.ml?.selected_threshold ?? detection.lexical_threshold ?? 0.5),
+                            model_policy: result.model_policy || result.overall?.model_policy || result.ml?.model_policy || '',
                             risk_level: result.risk_level || detection.risk_level || result.overall?.risk_level || 'unknown'
                         },
                         suspicious_indicators: collectList(
@@ -3381,9 +3459,12 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                         document.getElementById('downloadReportBtn').style.display = 'none';
                     }
                     const displayStatus = result.status || detection.final_verdict || 'safe';
+                    const displayStatusText = result.display_status || result.overall?.display_verdict || detection.display_verdict || displayStatus;
+                    const displayStatusNormalized = String(displayStatusText).toLowerCase();
+                    const displayStatusClass = displayStatusNormalized.includes('suspicious') ? 'suspicious' : String(displayStatus).toLowerCase();
                     const statusBadge = document.getElementById('statusBadge');
-                    statusBadge.className = 'badge ' + displayStatus;
-                    statusBadge.textContent = String(displayStatus).toUpperCase();
+                    statusBadge.className = 'badge ' + displayStatusClass;
+                    statusBadge.textContent = String(displayStatusText).toUpperCase();
                     resetAssistant(result.report_id, latestScanContext);
                     const reportUrl = result.report_id ? `api/download_report.php?id=${result.report_id}` : '';
                     const snapshotKey = captureCurrentResultSnapshot(reportUrl);
@@ -3393,11 +3474,51 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                             key: snapshotKey,
                             analyzedAt: new Date().toISOString(),
                             url: displayUrl,
-                            status: displayStatus,
+                            status: displayStatusText,
+                            machineStatus: displayStatus,
                             confidence: confidence,
                             riskLevel: displayRisk,
                             reportUrl
                         });
+                    }
+
+                    if (result.llm_pending && result.report_id) {
+                        document.getElementById('llmSummary').textContent = 'AI report is being prepared. The URL safety result is already available.';
+                        fetch('api/generate_report.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ report_id: result.report_id })
+                        })
+                            .then(parseJsonResponse)
+                            .then((reportResult) => {
+                                const generated = reportResult.llm_report && typeof reportResult.llm_report === 'object' ? reportResult.llm_report : {};
+                                if (!reportResult.success || !Object.keys(generated).length) return;
+                                const stillPotentiallySuspicious = String(displayStatusText).toLowerCase().includes('potentially suspicious');
+                                document.getElementById('llmSummary').textContent = stillPotentiallySuspicious
+                                    ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
+                                    : (generated.incident_summary || 'AI report is ready.');
+                                const generatedContainment = collectList(generated.containment_actions);
+                                const generatedEradication = collectList(generated.eradication_recovery_actions);
+                                const generatedPost = collectList(generated.post_incident_recommendations);
+                                renderSimpleList(document.getElementById('containmentList'), generatedContainment, 'No containment steps provided.');
+                                renderSimpleList(document.getElementById('eradicationList'), generatedEradication, 'No eradication and recovery steps provided.');
+                                renderSimpleList(document.getElementById('postIncidentList'), generatedPost, 'No post-incident recommendations provided.');
+                                document.getElementById('userAdvisory').textContent = generated.user_advisory || document.getElementById('userAdvisory').textContent;
+                                const generatedMitre = dedupeMitreTags(collectList(generated.mitre_attack_mapping));
+                                mitreContainer.innerHTML = '';
+                                generatedMitre.forEach(tech => {
+                                    const span = document.createElement('span');
+                                    span.className = 'badge';
+                                    span.style.background = '#e2e8f0';
+                                    span.style.color = '#4a5568';
+                                    span.style.marginRight = '5px';
+                                    span.textContent = formatMitreTag(tech);
+                                    mitreContainer.appendChild(span);
+                                });
+                                document.getElementById('mitrePrimaryValue').textContent = generatedMitre.length ? formatMitreTag(generatedMitre[0]) : '-';
+                                loadHistory();
+                            })
+                            .catch((error) => console.warn('AI report generation failed:', error));
                     }
 
                     document.getElementById('analysisResult').classList.add('show');
@@ -3415,7 +3536,9 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
 
                     body.classList.remove('status-scanning');
                     let mode = 'safe';
-                    if (displayStatus === 'phishing') {
+                    if (displayStatusNormalized.includes('suspicious')) {
+                        mode = 'warn';
+                    } else if (displayStatus === 'phishing') {
                         mode = 'danger';
                     } else if (displayStatus === 'suspicious') {
                         mode = 'warn';
@@ -3425,12 +3548,12 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                     const labelMap = { safe: 'SAFE', warn: 'WARN', danger: 'BLOCK' };
                     const titleMap = {
                         safe: 'Shield locked: safe',
-                        warn: 'Shield alert: suspicious',
+                        warn: 'Review carefully',
                         danger: 'Shield blocking threats'
                     };
                     const subtitleMap = {
                         safe: 'Protection is stable and the URL looks clean.',
-                        warn: 'Suspicious signals detected. Proceed with caution.',
+                        warn: 'Suspicious signals detected, but this URL is not confirmed as phishing. Review the URL carefully before interacting with it.',
                         danger: 'High-risk signals detected. Avoid this link.'
                     };
                     shieldLabel.textContent = labelMap[mode];
@@ -3494,8 +3617,9 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
 
             return historyRowsCache
                 .filter(row => {
-                    const rowStatus = String(row.status || '').toLowerCase();
-                    if (status && rowStatus !== status.toLowerCase()) return false;
+                    const rowStatus = String(row.machineStatus || row.status || '').toLowerCase();
+                    const rowDisplayStatus = String(row.status || '').toLowerCase();
+                    if (status && rowStatus !== status.toLowerCase() && rowDisplayStatus !== status.toLowerCase()) return false;
 
                     const analyzedTime = new Date(row.analyzedAt).getTime();
                     if (fromTime && analyzedTime < fromTime) return false;
@@ -3554,7 +3678,7 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                 <tr>
                     <td>${new Date(row.analyzedAt).toLocaleString()}</td>
                     <td><a href="${escapeHtml(row.url)}" target="_blank">${escapeHtml(String(row.url || '').substring(0, 64))}${String(row.url || '').length > 64 ? '...' : ''}</a></td>
-                    <td><span class="badge ${escapeHtml(row.status)}">${escapeHtml(String(row.status).toUpperCase())}</span></td>
+                    <td><span class="badge ${String(row.status || '').toLowerCase().includes('suspicious') ? 'suspicious' : escapeHtml(row.machineStatus || row.status)}">${escapeHtml(String(row.status).toUpperCase())}</span></td>
                     <td>${Number(row.confidence || 0).toFixed(2)}%</td>
                     <td>${escapeHtml(row.riskLevel || mapRiskFromStatus(row.status))}</td>
                     <td>
@@ -3594,7 +3718,8 @@ $show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
                         reportId: entry.id || null,
                         analyzedAt: entry.analyzed_at,
                         url: entry.url,
-                        status: entry.status,
+                        status: entry.display_status || entry.status,
+                        machineStatus: entry.status,
                         confidence: Number(entry.confidence_score || 0) * 100,
                         riskLevel: mapRiskFromStatus(entry.status),
                         reportUrl: entry.id ? `api/download_report.php?id=${entry.id}` : '',

@@ -1,0 +1,23 @@
+{
+  "threshold": 0.31,
+  "model": "gradient_boosting",
+  "selection_rule": "test thresholds 0.20-0.70, require precision >= 0.55 and recall >= 0.9 when possible, then maximize F1 and recall",
+  "metrics": {
+    "threshold": 0.31,
+    "accuracy": 0.6335334667556148,
+    "precision": 0.5655172413793104,
+    "recall": 0.9656146961846443,
+    "f1_score": 0.7132915796798887,
+    "confusion_matrix": [
+      [
+        799,
+        1575
+      ],
+      [
+        73,
+        2050
+      ]
+    ],
+    "false_negative_rate": 0.03438530381535563
+  }
+}

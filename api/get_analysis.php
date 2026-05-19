@@ -25,7 +25,7 @@ $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 
 if ($isAdmin) {
     $sql = "
-        SELECT l.id, l.url, l.status, l.confidence_score, l.analyzed_at, u.username
+        SELECT l.id, l.url, l.status, l.confidence_score, l.analyzed_at, l.analysis_result, u.username
         FROM url_logs l
         JOIN users u ON l.user_id = u.id
     ";
@@ -41,7 +41,7 @@ if ($isAdmin) {
     $stmt->execute($params);
 } else {
     $sql = "
-        SELECT id, url, status, confidence_score, analyzed_at, 'Me' as username
+        SELECT id, url, status, confidence_score, analyzed_at, analysis_result, 'Me' as username
         FROM url_logs
         WHERE user_id = :user_id
     ";
@@ -58,5 +58,14 @@ if ($isAdmin) {
 }
 
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($results as &$row) {
+    $analysis = json_decode($row['analysis_result'] ?? '', true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($analysis)) {
+        $row['display_status'] = $analysis['display_status'] ?? ($analysis['overall']['display_verdict'] ?? $row['status']);
+    } else {
+        $row['display_status'] = $row['status'];
+    }
+    unset($row['analysis_result']);
+}
 echo json_encode($results);
 ?>

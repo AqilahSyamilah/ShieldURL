@@ -50,7 +50,8 @@ $apiStart = microtime(true);
 $apiUrl = "http://127.0.0.1:8000/scan";
 $payload = json_encode([
     "url" => $url,
-    "clicked" => $data["clicked"] ?? null
+    "clicked" => $data["clicked"] ?? null,
+    "generate_llm" => false
 ]);
 $curlDebugPath = __DIR__ . '/../tmp/analyze_curl_debug.log';
 $curlVerboseHandle = fopen($curlDebugPath, 'ab');
@@ -201,22 +202,28 @@ $result = [
     "url" => $api["url"] ?? $url,
     "clicked" => $api["clicked"] ?? ($data["clicked"] ?? null),
     "status" => $isPhishing ? "phishing" : "safe",
+    "display_status" => $api["overall"]["display_verdict"] ?? ($detection["display_verdict"] ?? ($isPhishing ? "phishing" : "safe")),
     "risk_level" => strtolower($api["overall"]["risk_level"] ?? ($detection["risk_level"] ?? ($api["ml"]["risk_level"] ?? "low"))),
     "confidence_score" => floatval($api["ml"]["confidence_score"] ?? ($detection["confidence_score"] ?? 0)),
+    "phishing_probability" => floatval($api["ml"]["phishing_probability"] ?? ($detection["phishing_probability"] ?? ($api["ml"]["confidence_score"] ?? ($detection["confidence_score"] ?? 0)))),
+    "selected_threshold" => floatval($api["ml"]["selected_threshold"] ?? ($detection["lexical_threshold"] ?? 0.5)),
+    "model_policy" => $api["overall"]["model_policy"] ?? ($api["ml"]["model_policy"] ?? ($detection["model_policy"] ?? "The system uses advanced URL detection analysis to identify suspicious website patterns.")),
     "features" => $api["ml"]["features"] ?? ($detection["features"] ?? []),
-    "llm_summary" => $api["llm"]["incident_summary"] ?? ($api["llm_report"]["incident_summary"] ?? ""),
-    "llm_report" => $api["llm_report"] ?? ($api["llm"] ?? []),
-    "mitre_techniques" => $api["llm"]["mitre_attack_mapping"] ?? ($api["llm_report"]["mitre_attack_mapping"] ?? ($api["llm"]["mitre_techniques"] ?? [])),
-    "nist_response" => $api["llm"]["containment_actions"] ?? ($api["llm_report"]["containment_actions"] ?? ($api["llm"]["nist_response"] ?? [])),
-    "incident_response" => $api["llm"]["eradication_recovery_actions"] ?? ($api["llm_report"]["eradication_recovery_actions"] ?? ($api["llm"]["incident_response"] ?? [])),
-    "user_advisory" => $api["llm"]["user_advisory"] ?? ($api["llm_report"]["user_advisory"] ?? ""),
+    "llm_summary" => "",
+    "llm_report" => [],
+    "mitre_techniques" => [],
+    "nist_response" => [],
+    "incident_response" => [],
+    "user_advisory" => "",
+    "llm_pending" => true,
+    "cache_used" => false,
 
     // Keep these extra fields for debugging / reports
     "detection" => $detection,
     "ml" => $api["ml"] ?? [],
     "heuristics" => $api["heuristics"] ?? [],
     "overall" => $api["overall"] ?? [],
-    "llm" => $api["llm"] ?? ($api["llm_report"] ?? []),
+    "llm" => [],
     "timing" => $api["timing"] ?? [],
     "debug" => [
         "fastapi_http_code" => $httpCode,
@@ -227,6 +234,8 @@ $result = [
         "curl_error" => $curlErr,
     ],
 ];
+$result["timing"]["cache_used"] = $result["cache_used"];
+$result["timing"]["fallback_used"] = false;
 
 if (!$result["success"]) {
     $result["message"] = $api["message"] ?? "Scan failed";
@@ -239,6 +248,38 @@ $auditLogged = false;
 try {
     $db = new Database();
     $conn = $db->getConnection();
+
+    $cacheStmt = $conn->prepare("
+        SELECT analysis_result
+        FROM url_logs
+        WHERE url = :url
+        ORDER BY analyzed_at DESC
+        LIMIT 10
+    ");
+    $cacheStmt->execute([':url' => $url]);
+    $clickedForCache = $data["clicked"] ?? null;
+    while ($cacheRow = $cacheStmt->fetch(PDO::FETCH_ASSOC)) {
+        $cachedAnalysis = json_decode($cacheRow['analysis_result'] ?? '', true);
+        if (!is_array($cachedAnalysis)) {
+            continue;
+        }
+        $cachedClicked = $cachedAnalysis['clicked'] ?? null;
+        $cachedReport = $cachedAnalysis['llm_report'] ?? ($cachedAnalysis['llm'] ?? []);
+        if ($cachedClicked === $clickedForCache && is_array($cachedReport) && !empty($cachedReport) && (($cachedReport['status'] ?? '') !== 'pending')) {
+            $result['llm_report'] = $cachedReport;
+            $result['llm'] = $cachedReport;
+            $result['llm_summary'] = $cachedReport['incident_summary'] ?? '';
+            $result['mitre_techniques'] = $cachedReport['mitre_attack_mapping'] ?? [];
+            $result['nist_response'] = $cachedReport['containment_actions'] ?? [];
+            $result['incident_response'] = $cachedReport['eradication_recovery_actions'] ?? [];
+            $result['user_advisory'] = $cachedReport['user_advisory'] ?? '';
+            $result['llm_pending'] = false;
+            $result['cache_used'] = true;
+            $result['timing']['cache_used'] = true;
+            $result['timing']['llm_seconds'] = 0;
+            break;
+        }
+    }
 
     $stmt = $conn->prepare("
         INSERT INTO url_logs

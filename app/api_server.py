@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import time
 import traceback
@@ -8,18 +9,18 @@ from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, model_validator, validator
 
 try:
     from .features import MODEL_PATH
     from .scan_url import run_scan
     from .llm_service import fallback_llm_report
-    from .llm.chain import generate_chat_answer
+    from .llm.chain import generate_chat_answer, generate_ir_report
 except ImportError:
     from features import MODEL_PATH
     from scan_url import run_scan
     from llm_service import fallback_llm_report
-    from llm.chain import generate_chat_answer
+    from llm.chain import generate_chat_answer, generate_ir_report
 
 app = FastAPI(title="ShieldURL API", version="1.0")
 logger = logging.getLogger("shieldurl.api")
@@ -33,6 +34,15 @@ CHAT_FALLBACK_ANSWER = (
     "The assistant is temporarily unavailable, but the scan result remains valid. "
     "Please follow the recommended actions."
 )
+
+
+@app.on_event("startup")
+def warm_ollama():
+    try:
+        generate_chat_answer("ready", {"checked_url": "startup", "detection": {"final_verdict": "safe"}}, "simple")
+        logger.info("ollama warmup completed")
+    except Exception as exc:
+        logger.info("ollama warmup skipped error=%s", exc)
 SENSITIVE_VALUE_PATTERN = re.compile(
     r"(?i)\b(password|passcode|otp|one[-\s]?time code|pin|card number|cvv|token|secret)\b\s*(?:is|=|:)?\s*[\w\-@.]{2,}"
 )
@@ -49,23 +59,50 @@ def _json_response(payload: dict, status_code: int = 200) -> JSONResponse:
 class ScanRequest(BaseModel):
     url: str
     clicked: Optional[bool] = None
+    generate_llm: bool = False
+
+
+class LLMReportRequest(BaseModel):
+    url: str
+    clicked: Optional[bool] = None
+    verdict: str
+    confidence: float
+    risk: str
 
 
 class ChatRequest(BaseModel):
     scan_id: Optional[str] = None
-    user_question: str = Field(..., max_length=500)
+    message: str = Field(default="", max_length=500)
     assistant_response_style: str = Field(default="simple")
     scan_context: dict = Field(default_factory=dict)
+    conversation: list[dict] = Field(default_factory=list)
+    history: list[dict] = Field(default_factory=list)
 
-    @validator("user_question")
-    def validate_user_question(cls, value: str) -> str:
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_chat_aliases(cls, values):
+        if not isinstance(values, dict):
+            return values
+        if not values.get("message"):
+            for alias in ("user_question", "prompt", "question"):
+                if values.get(alias):
+                    values["message"] = values[alias]
+                    break
+        if not values.get("conversation") and values.get("history"):
+            values["conversation"] = values["history"]
+        if "history" not in values:
+            values["history"] = values.get("conversation", [])
+        return values
+
+    @validator("message")
+    def validate_message(cls, value: str) -> str:
         if not isinstance(value, str):
-            raise ValueError("user_question must be a string")
+            raise ValueError("message must be a string")
         value = value.strip()
         if not value:
-            raise ValueError("user_question cannot be empty")
+            raise ValueError("message cannot be empty")
         if len(value) > 500:
-            raise ValueError("user_question must be 500 characters or fewer")
+            raise ValueError("message must be 500 characters or fewer")
         return value
 
     @validator("assistant_response_style")
@@ -183,12 +220,18 @@ def _format_confidence(confidence) -> str:
     return f"{rounded:.2f}%"
 
 
+def _display_verdict(status: str, confidence: float) -> str:
+    if status.lower() == "phishing" and confidence < 0.70:
+        return "Potentially Suspicious"
+    return status.replace("_", " ").title()
+
+
 def _context_parts(scan_context: dict) -> tuple[str, str, str, list[str]]:
     detection = scan_context.get("detection") if isinstance(scan_context, dict) else {}
     if not isinstance(detection, dict):
         detection = {}
-    verdict = str(detection.get("final_verdict") or "UNKNOWN").upper()
-    confidence = _format_confidence(detection.get("confidence_score", "unknown"))
+    verdict = str(detection.get("display_verdict") or detection.get("final_verdict") or "UNKNOWN").upper()
+    confidence = _format_confidence(detection.get("phishing_probability", detection.get("confidence_score", "unknown")))
     risk = str(detection.get("risk_level") or "unknown").lower()
     indicators = scan_context.get("suspicious_indicators") if isinstance(scan_context, dict) else []
     if not isinstance(indicators, list):
@@ -197,15 +240,32 @@ def _context_parts(scan_context: dict) -> tuple[str, str, str, list[str]]:
     return verdict, confidence, risk, indicators
 
 
+def _is_potentially_suspicious_context(scan_context: dict) -> bool:
+    detection = scan_context.get("detection") if isinstance(scan_context, dict) else {}
+    overall = scan_context.get("overall") if isinstance(scan_context, dict) else {}
+    text = " ".join(str(item).lower() for item in [
+        detection.get("display_verdict") if isinstance(detection, dict) else "",
+        overall.get("display_verdict") if isinstance(overall, dict) else "",
+        scan_context.get("display_verdict") if isinstance(scan_context, dict) else "",
+    ])
+    return "potentially suspicious" in text
+
+
 def _risky_open_guidance(scan_context: dict) -> str:
     verdict, confidence, risk, indicators = _context_parts(scan_context)
     indicator_text = ""
     if indicators:
         indicator_text = " The scan context lists suspicious indicators including " + ", ".join(indicators[:3]) + "."
 
+    if _is_potentially_suspicious_context(scan_context):
+        return (
+            f"Review carefully. This URL is {verdict} with {risk} risk and {confidence} confidence. Suspicious signals were detected, but this URL is not confirmed as phishing based on the current evidence.{indicator_text} "
+            "Verify the destination and source before interacting, and do not enter credentials, OTP, banking details, or personal data until it is verified."
+        )
+
     return (
         f"No. Based on the supplied scan context, the authoritative verdict is {verdict} with {risk} risk "
-        f"and {confidence} confidence.{indicator_text} Do not open the URL or enter credentials, OTP, banking details, "
+            f"and {confidence} confidence. The system uses advanced URL detection analysis to identify suspicious website patterns.{indicator_text} Do not open the URL or enter credentials, OTP, banking details, "
         "or personal data. Report it to IT/security, block the URL or domain where possible, and review relevant browser, DNS, proxy, or email logs."
     )
 
@@ -216,8 +276,16 @@ def _risky_danger_explanation(scan_context: dict) -> str:
         indicator_text = ", ".join(indicators[:5])
     else:
         indicator_text = "the current scan context does not list specific indicators"
+    if _is_potentially_suspicious_context(scan_context):
+        return (
+            f"ShieldURL classified this URL as {verdict} with {confidence} confidence and {risk} risk. "
+            f"The scan context lists suspicious indicators such as {indicator_text}, but the current evidence does not confirm phishing. "
+            "Review the URL carefully, verify the destination/source, and do not enter credentials or sensitive information until it is verified."
+        )
+
     return (
         f"Based on the ShieldURL scan result, this URL was classified as {verdict} with {confidence} confidence and {risk} risk. "
+        "The system uses advanced URL detection analysis to identify suspicious website patterns. "
         f"The scan context lists suspicious indicators such as {indicator_text}. "
         "If accessed, this URL may lead to credential harvesting, fake login pages, OTP theft, session hijacking, unauthorized account access, or financial fraud. "
         "Do not open the URL or enter login credentials, OTP, banking details, or personal information."
@@ -251,7 +319,7 @@ def health():
 def scan(req: ScanRequest):
     try:
         logger.info("scan request received url=%s clicked=%s", req.url, req.clicked)
-        scan_result = run_scan(req.url, req.clicked)
+        scan_result = run_scan(req.url, req.clicked, req.generate_llm)
         logger.info("detection finished url=%s timing=%s", req.url, scan_result.get("timing", {}))
         detection = scan_result.get("detection", {})
         llm_report = scan_result.get("llm_report", {})
@@ -304,9 +372,16 @@ def scan(req: ScanRequest):
 
         final_status = str(detection.get("final_verdict", "safe"))
         confidence = float(detection.get("confidence_score", 0))
+        phishing_probability = float(detection.get("phishing_probability", confidence) or 0)
+        lexical_threshold = float(detection.get("lexical_threshold", 0.5) or 0.5)
+        display_verdict = str(detection.get("display_verdict") or _display_verdict(final_status, confidence))
         ml_status = "PHISHING" if final_status == "phishing" else "LEGITIMATE"
         risk_level = str(detection.get("risk_level", "low")).upper()
         heuristic_reasons = detection.get("heuristic_reasons", [])
+        model_policy = str(
+            detection.get("model_policy")
+            or "The system uses advanced URL detection analysis to identify suspicious website patterns."
+        )
 
         return _json_response({
             "success": True,
@@ -316,8 +391,10 @@ def scan(req: ScanRequest):
             "ml": {
                 "status": ml_status,
                 "raw_label": 1 if final_status == "phishing" else 0,
-                "phishing_probability": confidence if final_status == "phishing" else None,
+                "phishing_probability": phishing_probability,
                 "confidence_score": confidence,
+                "selected_threshold": lexical_threshold,
+                "model_policy": model_policy,
                 "risk_level": risk_level,
                 "features_used": list((detection.get("features") or {}).keys()),
                 "features": detection.get("features", {}),
@@ -330,8 +407,10 @@ def scan(req: ScanRequest):
             "overall": {
                 "status": final_status.upper(),
                 "verdict": "LIKELY_PHISHING" if final_status == "phishing" else "LIKELY_LEGITIMATE",
+                "display_verdict": display_verdict,
                 "risk_level": risk_level,
                 "source": "scan_url",
+                "model_policy": model_policy,
             },
             "llm": llm_report if llm_report else fallback_llm_report({"url": req.url, "clicked": req.clicked, "detection": detection}, "LLM timeout or unavailable"),
             "llm_report": llm_report if llm_report else fallback_llm_report({"url": req.url, "clicked": req.clicked, "detection": detection}, "LLM timeout or unavailable"),
@@ -354,6 +433,78 @@ def scan(req: ScanRequest):
         })
 
 
+@app.post("/llm_report")
+def llm_report(req: LLMReportRequest):
+    started = time.perf_counter()
+    fallback_used = False
+    try:
+        if os.environ.get("SKIP_LLM", "0") == "1":
+            fallback_used = True
+            report = fallback_llm_report({
+                "url": req.url,
+                "clicked": req.clicked,
+                "detection": {
+                    "display_verdict": req.verdict,
+                    "final_verdict": req.verdict,
+                    "confidence_score": req.confidence,
+                    "risk_level": req.risk,
+                },
+            }, "LLM generation skipped via SKIP_LLM")
+        else:
+            report = generate_ir_report({
+                "url": req.url,
+                "verdict": req.verdict,
+                "confidence": req.confidence,
+                "risk": req.risk,
+            })
+            fallback_used = bool(report.get("error") or report.get("parse_error"))
+
+        llm_seconds = round(time.perf_counter() - started, 3)
+        logger.info(
+            "llm_report finished url=%s llm_seconds=%s cache_used=false fallback_used=%s",
+            req.url,
+            llm_seconds,
+            fallback_used,
+        )
+        return _json_response({
+            "success": True,
+            "llm_report": report,
+            "llm": report,
+            "timing": {
+                "detection_seconds": 0,
+                "llm_seconds": llm_seconds,
+                "total_seconds": llm_seconds,
+                "cache_used": False,
+                "fallback_used": fallback_used,
+            },
+        })
+    except Exception as exc:
+        llm_seconds = round(time.perf_counter() - started, 3)
+        logger.warning("llm_report fallback url=%s error=%s", req.url, exc)
+        report = fallback_llm_report({
+            "url": req.url,
+            "clicked": req.clicked,
+            "detection": {
+                "display_verdict": req.verdict,
+                "final_verdict": req.verdict,
+                "confidence_score": req.confidence,
+                "risk_level": req.risk,
+            },
+        }, str(exc))
+        return _json_response({
+            "success": True,
+            "llm_report": report,
+            "llm": report,
+            "timing": {
+                "detection_seconds": 0,
+                "llm_seconds": llm_seconds,
+                "total_seconds": llm_seconds,
+                "cache_used": False,
+                "fallback_used": True,
+            },
+        })
+
+
 @app.post("/chat")
 def chat(req: ChatRequest, request: Request):
     client_host = request.client.host if request.client else "unknown"
@@ -370,23 +521,26 @@ def chat(req: ChatRequest, request: Request):
     try:
         scan_context = req.scan_context
         if not _valid_scan_context(scan_context):
-            return _json_response({
-                "answer": "Please scan a URL first before using the assistant.",
-                "message": "Please scan a URL first before using the assistant.",
-                "used_scan_context": False,
-                "safety_notice": "Detection result was not modified by the LLM.",
-            }, status_code=400)
+            scan_context = {
+                "checked_url": "",
+                "detection": {
+                    "final_verdict": "general_question",
+                    "risk_level": "unknown",
+                    "confidence_score": "",
+                },
+                "assistant_scope": "General ShieldURL and cybersecurity guidance. Do not claim a URL was scanned unless scan context is provided.",
+            }
 
-        answer = generate_chat_answer(req.user_question, scan_context, req.assistant_response_style)
+        answer = generate_chat_answer(req.message, scan_context, req.assistant_response_style, req.conversation)
         if _chat_context_is_risky(scan_context):
-            if _question_asks_why_dangerous(req.user_question):
+            if _question_asks_why_dangerous(req.message):
                 answer = _risky_danger_explanation(scan_context)
                 status = "guardrail_replaced"
             elif (
                 _answer_has_placeholder_text(answer)
                 or _answer_softens_risky_verdict(answer)
                 or _answer_refuses_help(answer)
-                or _question_asks_to_open(req.user_question)
+                or _question_asks_to_open(req.message)
             ):
                 answer = _risky_open_guidance(scan_context)
                 status = "guardrail_replaced"
@@ -415,5 +569,5 @@ def chat(req: ChatRequest, request: Request):
             req.scan_id,
             status,
             latency_ms,
-            _redact_for_log(req.user_question),
+            _redact_for_log(req.message),
         )

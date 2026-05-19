@@ -8,16 +8,38 @@ import traceback
 from typing import Any, Optional
 
 try:
-    from .features import MODEL_PATH, extract_features, features_dataframe, get_domain
+    from .features import LEXICAL_THRESHOLD_PATH, MODEL_PATH, extract_features, features_dataframe, get_domain
     from .llm.chain import generate_ir_report
     from .llm_service import fallback_llm_report
 except ImportError:
-    from features import MODEL_PATH, extract_features, features_dataframe, get_domain
+    from features import LEXICAL_THRESHOLD_PATH, MODEL_PATH, extract_features, features_dataframe, get_domain
     from llm.chain import generate_ir_report
     from llm_service import fallback_llm_report
 
 
 AI_REPORT_FALLBACK_MESSAGE = "AI report unavailable, but detection result is still valid."
+
+
+def _load_lexical_threshold() -> float:
+    try:
+        with open(LEXICAL_THRESHOLD_PATH, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        return float(payload.get("threshold", 0.50))
+    except Exception:
+        return 0.50
+
+
+def _phishing_probability(model, df) -> float:
+    proba = model.predict_proba(df)[0]
+    classes = list(getattr(model, "classes_", []))
+    phishing_idx = classes.index(1) if 1 in classes else -1
+    return float(proba[phishing_idx])
+
+
+def _display_verdict(status: str, confidence: float) -> str:
+    if status == "phishing" and confidence < 0.70:
+        return "Potentially Suspicious"
+    return status
 
 
 def _build_ir_llm_report(url: str, verdict: str, confidence: float, risk: str) -> dict[str, Any]:
@@ -68,7 +90,7 @@ def _build_ir_llm_report(url: str, verdict: str, confidence: float, risk: str) -
         }
 
 
-def run_scan(url: str, clicked: Optional[bool] = False) -> dict[str, Any]:
+def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = False) -> dict[str, Any]:
     try:
         start_total = time.perf_counter()
         start_detection = time.perf_counter()
@@ -83,22 +105,12 @@ def run_scan(url: str, clicked: Optional[bool] = False) -> dict[str, Any]:
         )
         df = features_dataframe(features, expected_columns or None)
 
-        # Run the model prediction and collect confidence if available.
+        # Run the deployment model with the configured sensitivity.
         try:
-            prediction = model.predict(df)[0]
-            confidence = 0.0
-
-            if hasattr(model, 'predict_proba'):
-                proba = model.predict_proba(df)[0]
-                try:
-                    class_idx = list(model.classes_).index(prediction)
-                    confidence = proba[class_idx]
-                except Exception:
-                    confidence = max(proba)
-
-            status = "safe"
-            if int(prediction) == 1:
-                status = "phishing"
+            threshold = _load_lexical_threshold()
+            phishing_probability = _phishing_probability(model, df)
+            status = "phishing" if phishing_probability >= threshold else "safe"
+            confidence = phishing_probability
 
         except Exception:
             # Fall back to a small ruleset if the model cannot score the URL.
@@ -131,14 +143,11 @@ def run_scan(url: str, clicked: Optional[bool] = False) -> dict[str, Any]:
         if any(domain.endswith(tld) for tld in risky_tlds):
             status = "suspicious" if status == "safe" else status
             heuristic_reasons.append(f"uses a high-risk Top-Level Domain ({domain.split('.')[-1]})")
-            if status == "suspicious" and confidence > 0.5:
-                confidence = 0.65
 
         # Leetspeak in the host is a strong typosquatting signal.
         if re.search(r"[a-z][0-9][a-z]", domain.lower()):
             status = "phishing"
             heuristic_reasons.append("contains obfuscated characters (leetspeak) often used in typosquatting")
-            confidence = 0.85
 
         # Login and account language often appears in lure URLs.
         suspicious_keywords = ['login', 'secure', 'account', 'update', 'verify', 'wallet', 'banking']
@@ -150,14 +159,26 @@ def run_scan(url: str, clicked: Optional[bool] = False) -> dict[str, Any]:
         # Recalculate the risk level after the heuristic adjustments.
         risk_level = "low"
         if status == "phishing":
-            risk_level = "high"
+            risk_level = "medium" if confidence < 0.70 else "high"
         elif status == "suspicious":
             risk_level = "medium"
 
         detection_seconds = time.perf_counter() - start_detection
 
         start_llm = time.perf_counter()
-        if os.environ.get("SKIP_LLM", "0") == "1":
+        if not generate_llm:
+            llm_output = {
+                "generated_by": "pending",
+                "status": "pending",
+                "incident_summary": "AI report is being prepared.",
+                "report": "AI report is being prepared.",
+                "containment_actions": [],
+                "mitre_attack_mapping": [],
+                "eradication_recovery_actions": [],
+                "post_incident_recommendations": [],
+                "user_advisory": "",
+            }
+        elif os.environ.get("SKIP_LLM", "0") == "1":
             llm_output = {
                 "generated_by": "fallback",
                 "error": AI_REPORT_FALLBACK_MESSAGE,
@@ -171,7 +192,7 @@ def run_scan(url: str, clicked: Optional[bool] = False) -> dict[str, Any]:
                 "user_advisory": AI_REPORT_FALLBACK_MESSAGE,
             }
         else:
-            llm_output = _build_ir_llm_report(url, status, float(confidence), risk_level)
+            llm_output = _build_ir_llm_report(url, _display_verdict(status, float(confidence)), float(confidence), risk_level)
         llm_seconds = time.perf_counter() - start_llm
 
         total_seconds = time.perf_counter() - start_total
@@ -182,8 +203,12 @@ def run_scan(url: str, clicked: Optional[bool] = False) -> dict[str, Any]:
             "clicked": clicked,
             "detection": {
                 "final_verdict": status,
+                "display_verdict": _display_verdict(status, float(confidence)),
                 "risk_level": risk_level,
                 "confidence_score": float(confidence),
+                "phishing_probability": float(confidence),
+                "lexical_threshold": _load_lexical_threshold(),
+                "model_policy": "The system uses advanced URL detection analysis to identify suspicious website patterns.",
                 "features": features,
                 "heuristic_reasons": heuristic_reasons,
             },
@@ -192,6 +217,8 @@ def run_scan(url: str, clicked: Optional[bool] = False) -> dict[str, Any]:
                 "detection_seconds": round(detection_seconds, 3),
                 "llm_seconds": round(llm_seconds, 3),
                 "total_seconds": round(total_seconds, 3),
+                "cache_used": False,
+                "fallback_used": bool(llm_output.get("error")),
             },
         }
     except Exception as exc:

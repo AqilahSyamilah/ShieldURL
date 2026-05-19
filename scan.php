@@ -153,9 +153,16 @@
         <div class="result-item"><span class="label">ML Status</span><span id="mlStatus"></span></div>
         <div class="result-item"><span class="label">ML Confidence Score</span><span id="mlConfidence"></span></div>
         <div class="result-item"><span class="label">ML Risk Level</span><span id="mlRisk"></span></div>
+        <div class="result-item"><span class="label">Detection Sensitivity</span><span id="selectedThreshold"></span></div>
+        <div class="result-item"><span class="label">System Detection</span><span id="machineVerdict"></span></div>
+        <div class="result-item"><span class="label">Safety Status</span><span id="displayVerdict"></span></div>
         <div class="result-item"><span class="label">PhishTank In Database</span><span id="ptInDb"></span></div>
         <div class="result-item"><span class="label">PhishTank Verified</span><span id="ptVerified"></span></div>
         <div class="result-item"><span class="label">PhishTank Is Phishing</span><span id="ptPhishing"></span></div>
+      </div>
+      <div class="result-item" style="margin-top:10px;">
+        <span class="label">How ShieldURL Decides</span>
+        <span id="modelPolicy">The system uses advanced URL detection analysis to identify suspicious website patterns.</span>
       </div>
     </div>
   </div>
@@ -184,6 +191,21 @@
     function renderText(targetId, value) {
       const el = document.getElementById(targetId);
       el.textContent = String(value);
+    }
+
+    function formatProbability(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return 'N/A';
+      const percent = number <= 1 ? number * 100 : number;
+      return percent.toFixed(2) + '%';
+    }
+
+    function simplePolicyText(value) {
+      const text = String(value || '').trim();
+      if (!text || /lexical model|false negatives|threshold|recall/i.test(text)) {
+        return 'The system uses advanced URL detection analysis to identify suspicious website patterns.';
+      }
+      return text;
     }
 
     function renderBool(targetId, value) {
@@ -238,10 +260,14 @@
           );
         }
 
-        renderBadge('overallVerdict', data?.overall?.verdict ?? 'N/A');
+        renderBadge('overallVerdict', data?.overall?.display_verdict ?? data?.overall?.verdict ?? 'N/A');
         renderBadge('mlStatus', data?.ml?.status ?? 'N/A');
-        renderText('mlConfidence', data?.ml?.confidence_score ?? 'N/A');
+        renderText('mlConfidence', formatProbability(data?.ml?.phishing_probability ?? data?.ml?.confidence_score));
         renderBadge('mlRisk', data?.ml?.risk_level ?? 'N/A');
+        renderText('selectedThreshold', formatProbability(data?.ml?.selected_threshold));
+        renderText('machineVerdict', data?.overall?.status ?? data?.detection?.final_verdict ?? 'N/A');
+        renderText('displayVerdict', data?.overall?.display_verdict ?? data?.detection?.display_verdict ?? 'N/A');
+        renderText('modelPolicy', simplePolicyText(data?.ml?.model_policy ?? data?.overall?.model_policy));
         renderBool('ptInDb', data?.phishtank?.in_database);
         renderBool('ptVerified', data?.phishtank?.verified);
         renderBool('ptPhishing', data?.phishtank?.is_phishing);

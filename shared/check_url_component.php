@@ -70,6 +70,30 @@
                                                 <a id="resultUrl" href="#" target="_blank" style="word-break: break-all;">Loading...</a>
                                             </div>
                                         </div>
+                                        <div class="result-field" style="margin-top: 0.9rem; margin-bottom: 0;">
+                                            <label>Scan Decision Explanation</label>
+                                            <div class="summary-grid" style="margin-top: 0.55rem;">
+                                                <div class="summary-card">
+                                                    <div class="summary-label">Phishing Probability</div>
+                                                    <div class="summary-value" id="modelPhishingProbability">-</div>
+                                                </div>
+                                                <div class="summary-card">
+                                                    <div class="summary-label">Detection Sensitivity</div>
+                                                    <div class="summary-value" id="modelSelectedThreshold">-</div>
+                                                </div>
+                                                <div class="summary-card">
+                                                    <div class="summary-label">System Detection</div>
+                                                    <div class="summary-value" id="modelFinalVerdict">-</div>
+                                                </div>
+                                                <div class="summary-card">
+                                                    <div class="summary-label">Safety Status</div>
+                                                    <div class="summary-value" id="modelDisplayVerdict">-</div>
+                                                </div>
+                                            </div>
+                                            <p class="incident-text" id="modelPolicyText" style="margin-top: 0.65rem;">
+                                                The system uses advanced URL detection analysis to identify suspicious website patterns.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div class="dashboard-card fade-card" style="margin-top: 0.9rem;">

@@ -185,6 +185,13 @@ def _is_risky_scan(scan_context: dict[str, Any]) -> bool:
     return any(term in decision for term in risky_terms)
 
 
+def _is_potentially_suspicious(scan_context: dict[str, Any]) -> bool:
+    decision = _authoritative_decision(scan_context)
+    return "potentially suspicious" in decision or (
+        "suspicious" in decision and "high" not in decision and "confirmed" not in decision
+    )
+
+
 def _extract_scan_value(scan_context: dict[str, Any], *paths: tuple[str, ...], default: Any = "") -> Any:
     for path in paths:
         current: Any = scan_context
@@ -229,8 +236,13 @@ def _fallback_detection_analysis(scan_context: dict[str, Any], risky: bool) -> l
             return cleaned[:3]
 
     if risky:
+        if _is_potentially_suspicious(scan_context):
+            return [
+                "The URL shows suspicious characteristics, but current evidence does not confirm phishing.",
+                "Review the URL carefully and verify the destination before entering credentials or sensitive information.",
+            ]
         return [
-            "The URL shows suspicious patterns consistent with phishing or deceptive link delivery.",
+            "The system uses advanced URL detection analysis to identify suspicious website patterns.",
             "The scan context indicates indicators such as obfuscation, abnormal domain structure, or missing HTTPS trust signals.",
         ]
     return [
@@ -251,10 +263,17 @@ def _fallback_severity_priority(scan_context: dict[str, Any], risky: bool) -> di
         )
     )
     if risky:
+        if _is_potentially_suspicious(scan_context):
+            return {
+                "severity": "Medium",
+                "priority": "Medium",
+                "confidence_comment": f"The scan confidence is around {confidence}; treat this as a cautious review signal, not confirmed phishing.",
+                "possible_impact": "Users could be exposed to deceptive content if the URL is unsafe, so verify the destination before entering sensitive information.",
+            }
         return {
             "severity": "Medium",
             "priority": "High",
-            "confidence_comment": f"The detection context indicates a phishing-related risk with confidence around {confidence}.",
+            "confidence_comment": f"The scan confidence is around {confidence}; suspicious website patterns were detected.",
             "possible_impact": "Users may be deceived into opening a phishing URL or disclosing credentials if they interact with the link.",
         }
     return {
@@ -343,9 +362,25 @@ def _fallback_incident_summary(scan_context: dict[str, Any]) -> str:
         )
     )
     if _is_risky_scan(scan_context):
+        display_verdict = _safe_text(
+            _extract_scan_value(
+                scan_context,
+                ("display_verdict",),
+                ("detection", "display_verdict"),
+                ("overall", "display_verdict"),
+                default="",
+            )
+        ).lower()
+        verdict_text = display_verdict or verdict or "potentially suspicious"
+        if _is_potentially_suspicious(scan_context):
+            return (
+                "This URL shows suspicious characteristics, but it is not confirmed phishing. "
+                "Users should verify the website carefully before entering passwords, OTPs, or sensitive information."
+            )
         return (
-            f"The submitted URL was classified as {verdict or 'likely phishing'} with {risk or 'medium'} risk and {confidence_text} confidence based on suspicious indicators "
+            f"The submitted URL was classified as {verdict_text} with {risk or 'medium'} risk and {confidence_text} confidence based on suspicious indicators "
             "such as obfuscation, abnormal domain structure, and missing HTTPS trust signals. "
+            "The system uses advanced URL detection analysis to identify suspicious website patterns. "
             "These indicators suggest possible user deception or credential exposure risk if the link is opened."
         )
     return (
@@ -494,6 +529,9 @@ def _build_prompt(scan_context: dict[str, Any]) -> str:
         "task": "Return valid JSON only for a concise URL incident report.",
         "rules": [
             "Use scan_context only.",
+            "The system uses advanced URL detection analysis to identify suspicious website patterns.",
+            "Use simple language for non-technical office staff.",
+            "If display_verdict is potentially suspicious, use that wording instead of confirmed phishing language.",
             "incident_summary must be 1-2 analytical sentences, never a title.",
             "For phishing or suspicious URLs, explain what was detected, why it is suspicious, and likely impact.",
             "containment_actions max 2 items.",
@@ -548,8 +586,12 @@ def _ollama_generate(prompt: str, model: str, base_url: str, timeout: int) -> st
             "stream": False,
                 "format": "json",
             "options": {
-                "temperature": 0,
-                "num_predict": 180,
+                "num_ctx": 2048,
+                "num_predict": 350,
+                "temperature": 0.2,
+                "top_p": 0.8,
+                "repeat_penalty": 1.1,
+                "num_thread": os.cpu_count() or 4,
             },
         }
     ).encode("utf-8")
@@ -603,6 +645,28 @@ def fallback_llm_report(
     report["detection_analysis"] = _fallback_detection_analysis(context, risky)
     report["severity_priority"] = _fallback_severity_priority(context, risky)
     if risky:
+        if _is_potentially_suspicious(context):
+            report["containment_actions"] = [
+                "Review the URL carefully before allowing user interaction.",
+                "Verify the destination and source of the link before users enter sensitive information.",
+            ]
+            report["eradication_recovery_actions"] = [
+                "Check whether users interacted with the URL if it was shared internally.",
+                "Escalate for blocking only if review confirms malicious behavior or organization policy requires it.",
+            ]
+            report["post_incident_recommendations"] = [
+                "Document the suspicious indicators and review outcome.",
+                "Remind users to verify unexpected links before entering credentials or sensitive information.",
+            ]
+            report["mitre_attack_mapping"] = []
+            report["analyst_notes"] = "Fallback guidance returned cautious review steps because the URL is potentially suspicious, not confirmed phishing."
+            report["user_advisory"] = (
+                "Suspicious signals were detected, but this URL is not confirmed as phishing. "
+                "Review the URL carefully before interacting with it, and verify the destination before entering credentials or sensitive information."
+            )
+            report["generated_by"] = "fallback"
+            report["error"] = str(error_message or "LLM timeout or unavailable")
+            return report
         report["containment_actions"] = [
             "Block or avoid the suspicious URL.",
             "Warn users not to interact with the link.",
@@ -650,6 +714,7 @@ def _authoritative_decision(scan_context: dict[str, Any]) -> str:
     detection = scan_context.get("detection")
     if isinstance(detection, dict):
         candidates.extend([
+            detection.get("display_verdict"),
             detection.get("final_verdict"),
             detection.get("risk_level"),
             detection.get("confidence_score"),
@@ -658,6 +723,7 @@ def _authoritative_decision(scan_context: dict[str, Any]) -> str:
     overall = scan_context.get("overall")
     if isinstance(overall, dict):
         candidates.extend([
+            overall.get("display_verdict"),
             overall.get("status"),
             overall.get("verdict"),
             overall.get("risk_level"),
@@ -711,7 +777,7 @@ def generate_url_report(scan_context: dict[str, Any]) -> dict[str, Any]:
     if os.environ.get("SKIP_LLM", "0") == "1":
         return fallback_llm_report(scan_context, "LLM generation skipped via SKIP_LLM")
 
-    model = os.environ.get("OLLAMA_MODEL", "llama3.2")
+    model = os.environ.get("OLLAMA_MODEL", "llama3.2:latest")
     base_url = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
     timeout = min(int(os.environ.get("OLLAMA_TIMEOUT", "45")), 45)
 

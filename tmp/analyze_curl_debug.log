@@ -571,3 +571,201 @@ Content-Length: 70
 < 
 * Connection #0 to host 127.0.0.1 left intact
 curl_errno=0 curl_error= http_code=200 total=69.802213
+
+[2026-05-19T18:57:58+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/service-gestions-paiements-antai.trisaincorporadora.com.br\/infodossier\/redirect","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 117
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 16:57:57 GMT
+< server: uvicorn
+< content-length: 8702
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=78.307074
+
+[2026-05-19T19:00:53+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/service-gestions-paiements-antai.trisaincorporadora.com.br\/infodossier\/redirect","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 117
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 17:00:53 GMT
+< server: uvicorn
+< content-length: 8291
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=59.029845
+
+[2026-05-19T19:02:16+02:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/youtube.com\/watch?v=osDakrbizDk","clicked":true}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 66
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 17:02:16 GMT
+< server: uvicorn
+< content-length: 8713
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=60.477334
+
+[2026-05-19T19:03:55+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/author.uthm.edu.my\/","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 56
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 17:03:54 GMT
+< server: uvicorn
+< content-length: 8148
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=55.016944
+
+[2026-05-19T19:05:01+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/sncf-connect.com\/","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 54
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 17:05:01 GMT
+< server: uvicorn
+< content-length: 7959
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=55.005783
+
+[2026-05-19T19:20:48+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/sncf-connect.com\/","clicked":true}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 53
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 17:20:47 GMT
+< server: uvicorn
+< content-length: 7910
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=73.174054
+
+[2026-05-19T19:29:58+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/sncf-connect.com\/","clicked":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 54
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 17:29:58 GMT
+< server: uvicorn
+< content-length: 7783
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=71.443972
+
+[2026-05-19T19:47:59+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/sncf-connect.com\/","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 75
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 17:47:58 GMT
+< server: uvicorn
+< content-length: 4427
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=5.075891
+
+[2026-05-19T20:07:45+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/sncf-connect.com\/","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 75
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 18:07:45 GMT
+< server: uvicorn
+< content-length: 4429
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.929756
+
+[2026-05-19T20:09:18+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/www.youtube.com\/","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 74
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 18:09:19 GMT
+< server: uvicorn
+< content-length: 4373
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=4.74548
+
+[2026-05-19T20:48:50+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/www.youtube.com\/","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 74
+
+< HTTP/1.1 200 OK
+< date: Tue, 19 May 2026 18:48:50 GMT
+< server: uvicorn
+< content-length: 4371
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=6.042999

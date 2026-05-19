@@ -87,9 +87,10 @@ if (!is_array($data)) {
     chat_json(['success' => false, 'message' => 'Invalid JSON request'], 400);
 }
 
-$question = isset($data['user_question']) ? trim($data['user_question']) : '';
-if ($question === '' || !is_string($data['user_question'] ?? null)) {
-    chat_json(['success' => false, 'message' => 'user_question is required'], 400);
+$rawQuestion = $data['user_question'] ?? ($data['message'] ?? ($data['prompt'] ?? ($data['question'] ?? '')));
+$question = is_string($rawQuestion) ? trim($rawQuestion) : '';
+if ($question === '') {
+    chat_json(['success' => false, 'message' => 'message is required'], 400);
 }
 if (strlen($question) > 500) {
     chat_json(['success' => false, 'message' => 'user_question must be 500 characters or fewer'], 400);
@@ -100,10 +101,6 @@ $clientScanContext = isset($data['scan_context']) && is_array($data['scan_contex
 $assistantStyle = isset($data['assistant_response_style']) ? strtolower(trim(strval($data['assistant_response_style']))) : 'simple';
 if (!in_array($assistantStyle, ['simple', 'technical', 'executive'], true)) {
     $assistantStyle = 'simple';
-}
-
-if ($scanId <= 0 && empty($clientScanContext)) {
-    chat_json(['success' => false, 'message' => 'Please scan a URL first before using the assistant.'], 400);
 }
 
 if (chat_rate_limited()) {
@@ -160,16 +157,28 @@ if ($scanId > 0) {
     }
 }
 
-if (empty($scanContext) || empty($scanContext['checked_url']) || !isset($scanContext['detection']) || !is_array($scanContext['detection'])) {
-    chat_json(['success' => false, 'message' => 'Please scan a URL first before using the assistant.'], 400);
+if (empty($scanContext) || !isset($scanContext['detection']) || !is_array($scanContext['detection'])) {
+    $scanContext = [
+        'checked_url' => '',
+        'detection' => [
+            'final_verdict' => 'general_question',
+            'risk_level' => 'unknown',
+            'confidence_score' => '',
+        ],
+        'assistant_scope' => 'General ShieldURL and cybersecurity guidance. Do not claim a URL was scanned unless scan context is provided.',
+    ];
 }
 
 $apiStart = microtime(true);
 $payload = json_encode([
     'scan_id' => $scanId > 0 ? strval($scanId) : null,
+    'message' => $question,
     'user_question' => $question,
+    'question' => $question,
     'assistant_response_style' => $assistantStyle,
     'scan_context' => $scanContext,
+    'history' => array_slice($data['history'] ?? ($data['conversation'] ?? []), -6),
+    'conversation' => array_slice($data['conversation'] ?? ($data['history'] ?? []), -6),
 ]);
 
 if (!function_exists('curl_init')) {

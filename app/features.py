@@ -1,5 +1,6 @@
 import os
 import re
+from math import log2
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -7,11 +8,52 @@ import pandas as pd
 
 
 MODEL_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "model", "url_phishing_model.pkl")
+    os.path.join(os.path.dirname(__file__), "..", "models", "shieldurl_lexical_model.pkl")
+)
+EXTENDED_MODEL_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "models", "shieldurl_extended_model.pkl")
 )
 DATASET_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "data", "PhishingData.csv")
 )
+DATASET_PATHS = [
+    DATASET_PATH,
+    "/mnt/data/dataset_phishing.csv",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "dataset_phishing.csv")),
+]
+LEXICAL_FEATURES_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "models", "lexical_features.json")
+)
+EXTENDED_FEATURES_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "models", "extended_features.json")
+)
+LEXICAL_THRESHOLD_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "models", "lexical_threshold.json")
+)
+
+LEXICAL_FEATURE_COLUMNS = [
+    "url_length",
+    "domain_length",
+    "path_length",
+    "dot_count",
+    "hyphen_count",
+    "slash_count",
+    "digit_count",
+    "digit_ratio",
+    "alphabet_ratio",
+    "special_char_count",
+    "query_param_count",
+    "has_https",
+    "uses_ip_address",
+    "suspicious_keyword_count",
+    "brand_keyword_count",
+    "entropy",
+    "uses_url_shortener",
+    "has_prefix_suffix_hyphen",
+    "subdomain_count",
+    "number_of_subdomains",
+    "has_suspicious_tld",
+]
 
 FEATURE_COLUMNS = [
     "UsingIP",
@@ -46,7 +88,13 @@ FEATURE_COLUMNS = [
     "StatsReport",
 ]
 
-LABEL_CANDIDATES = ["Result", "class", "Class", "Label", "label", "target", "Target"]
+LABEL_CANDIDATES = [
+    "status",
+    "label",
+    "result",
+    "class",
+    "target",
+]
 
 RAW_TO_CANONICAL = {
     "having_IPhaving_IP_Address": "UsingIP",
@@ -82,6 +130,14 @@ RAW_TO_CANONICAL = {
     "Links_pointing_to_page": "LinksPointingToPage",
     "Statistical_report": "StatsReport",
     "Result": "Result",
+    "status": "status",
+    "Label": "label",
+    "label": "label",
+    "Class": "class",
+    "class": "class",
+    "Target": "target",
+    "target": "target",
+    "suspecious_tld": "suspicious_tld",
 }
 
 SHORTENERS = {
@@ -101,11 +157,26 @@ SHORTENERS = {
 }
 
 SUSPICIOUS_KEYWORDS = {"secure", "account", "update", "login", "verify", "signin", "banking", "wallet"}
+BRAND_IMPERSONATION_KEYWORDS = {
+    "paypal",
+    "bank",
+    "maybank",
+    "cimb",
+    "login",
+    "verify",
+    "secure",
+    "account",
+    "update",
+}
+SUSPICIOUS_TLDS = {"ru", "cn", "xyz", "top", "work", "info", "tk", "ml", "ga", "cf", "gq"}
 
 
 def clean_column_name(name: Any) -> str:
     text = str(name).strip()
-    return RAW_TO_CANONICAL.get(text, text)
+    mapped = RAW_TO_CANONICAL.get(text, text)
+    if mapped not in FEATURE_COLUMNS and mapped not in {"Result", "url"}:
+        return mapped.strip().lower()
+    return mapped
 
 
 def clean_dataset_frame(df: pd.DataFrame) -> tuple[pd.DataFrame, str]:
@@ -116,7 +187,8 @@ def clean_dataset_frame(df: pd.DataFrame) -> tuple[pd.DataFrame, str]:
     if drop_cols:
         cleaned = cleaned.drop(columns=drop_cols)
 
-    target_column = next((col for col in LABEL_CANDIDATES if col in cleaned.columns), None)
+    lower_to_column = {str(col).lower(): col for col in cleaned.columns}
+    target_column = next((lower_to_column[col] for col in LABEL_CANDIDATES if col in lower_to_column), None)
     if not target_column:
         raise KeyError(f"Unable to detect target column. Available columns: {list(cleaned.columns)}")
 
@@ -164,6 +236,59 @@ def _has_ip(host: str) -> bool:
     return bool(re.fullmatch(f"(?:{ipv4}|{ipv6})", host or ""))
 
 
+def has_ip_address(host: str) -> bool:
+    return _has_ip(host)
+
+
+def _entropy(value: str) -> float:
+    if not value:
+        return 0.0
+    length = len(value)
+    return -sum((value.count(char) / length) * log2(value.count(char) / length) for char in set(value))
+
+
+def extract_lexical_features(url: str) -> dict[str, float]:
+    normalized_url = normalize_url(url)
+    parsed = urlparse(normalized_url)
+    host = normalize_host(parsed.hostname or "")
+    suffix = host.rsplit(".", 1)[-1].lower() if "." in host else ""
+    labels = [label for label in host.split(".") if label]
+    domain_label_count = 2 if len(labels) >= 2 else len(labels)
+    url_length = len(normalized_url)
+    digit_count = sum(1 for char in normalized_url if char.isdigit())
+    alphabet_count = sum(1 for char in normalized_url if char.isalpha())
+    special_char_count = sum(1 for char in normalized_url if not char.isalnum())
+    query_param_count = len([part for part in parsed.query.split("&") if part]) if parsed.query else 0
+    lower_url = normalized_url.lower()
+    subdomain_count = max(len(labels) - domain_label_count, 0)
+
+    return {
+        "url_length": url_length,
+        "domain_length": len(host),
+        "path_length": len(parsed.path or ""),
+        "dot_count": normalized_url.count("."),
+        "hyphen_count": normalized_url.count("-"),
+        "slash_count": normalized_url.count("/"),
+        "digit_count": digit_count,
+        "digit_ratio": digit_count / url_length if url_length else 0.0,
+        "alphabet_ratio": alphabet_count / url_length if url_length else 0.0,
+        "special_char_count": special_char_count,
+        "query_param_count": query_param_count,
+        "has_https": 1 if parsed.scheme.lower() == "https" else 0,
+        "uses_ip_address": 1 if _has_ip(host) else 0,
+        "suspicious_keyword_count": sum(
+            1 for keyword in SUSPICIOUS_KEYWORDS if keyword in lower_url
+        ),
+        "brand_keyword_count": sum(1 for keyword in BRAND_IMPERSONATION_KEYWORDS if keyword in lower_url),
+        "entropy": _entropy(normalized_url),
+        "uses_url_shortener": 1 if host in SHORTENERS else 0,
+        "has_prefix_suffix_hyphen": 1 if "-" in host else 0,
+        "subdomain_count": subdomain_count,
+        "number_of_subdomains": subdomain_count,
+        "has_suspicious_tld": 1 if suffix in SUSPICIOUS_TLDS else 0,
+    }
+
+
 def extract_features(url: str) -> dict[str, int]:
     normalized_url = normalize_url(url)
     parsed = urlparse(normalized_url)
@@ -197,6 +322,7 @@ def extract_features(url: str) -> dict[str, int]:
         forwarding = -1
 
     return {
+        **extract_lexical_features(url),
         "UsingIP": -1 if _has_ip(host) else 1,
         "LongURL": long_url,
         "ShortURL": -1 if host in SHORTENERS else 1,
@@ -230,7 +356,7 @@ def extract_features(url: str) -> dict[str, int]:
     }
 
 
-def features_dataframe(features: dict[str, int], expected_columns: Optional[list[str]] = None) -> pd.DataFrame:
+def features_dataframe(features: dict[str, Any], expected_columns: Optional[list[str]] = None) -> pd.DataFrame:
     columns = expected_columns or FEATURE_COLUMNS
-    row = {column: int(features.get(column, 0)) for column in columns}
+    row = {column: float(features.get(column, 0)) for column in columns}
     return pd.DataFrame([row], columns=columns)
