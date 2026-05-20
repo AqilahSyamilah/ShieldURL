@@ -12,12 +12,24 @@ OLLAMA_OPTIONS = {
     "num_thread": os.cpu_count() or 4,
 }
 
+CHAT_OLLAMA_OPTIONS = {
+    "num_ctx": 1024,
+    "num_predict": 180,
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "repeat_penalty": 1.1,
+    "num_thread": os.cpu_count() or 4,
+    "sync_client_kwargs": {"timeout": 22},
+    "async_client_kwargs": {"timeout": 22},
+}
+
 llm = OllamaLLM(model="llama3.2:latest", **OLLAMA_OPTIONS)
+chat_llm = OllamaLLM(model="llama3.2:latest", **CHAT_OLLAMA_OPTIONS)
 parser = JsonOutputParser()
 
 raw_chain = incident_prompt | llm
 chain = raw_chain | parser
-chat_chain = chat_prompt | llm
+chat_chain = chat_prompt | chat_llm
 
 
 def _normalise_report(report, verdict=""):
@@ -138,14 +150,40 @@ def generate_ir_report(scan_result):
         }
 
 
+def _compact_chat_context(scan_context):
+    if not isinstance(scan_context, dict):
+        return {}
+
+    detection = scan_context.get("detection") if isinstance(scan_context.get("detection"), dict) else {}
+    nist_actions = scan_context.get("nist_actions") if isinstance(scan_context.get("nist_actions"), dict) else {}
+
+    indicators = scan_context.get("suspicious_indicators", [])
+    if not isinstance(indicators, list):
+        indicators = []
+
+    return {
+        "url": scan_context.get("checked_url") or scan_context.get("url") or "",
+        "verdict": detection.get("display_verdict") or detection.get("final_verdict") or scan_context.get("final_verdict") or "",
+        "confidence": detection.get("confidence_score") or detection.get("phishing_probability") or scan_context.get("confidence_score") or "",
+        "risk": detection.get("risk_level") or scan_context.get("risk_level") or "",
+        "suspicious_indicators": [str(item).strip() for item in indicators if str(item).strip()][:3],
+        "mitre_attack": scan_context.get("mitre_attack", [])[:1] if isinstance(scan_context.get("mitre_attack"), list) else [],
+        "recommended_actions": {
+            "containment": nist_actions.get("containment", [])[:2] if isinstance(nist_actions.get("containment"), list) else [],
+            "recovery": nist_actions.get("eradication_recovery", [])[:2] if isinstance(nist_actions.get("eradication_recovery"), list) else [],
+        },
+        "scope": scan_context.get("assistant_scope", ""),
+    }
+
+
 def generate_chat_answer(user_question, scan_context, assistant_response_style="simple", conversation=None):
     recent_conversation = []
     if isinstance(conversation, list):
-        recent_conversation = conversation[-6:]
+        recent_conversation = conversation[-2:]
     context = {
-        "scan_context": scan_context,
+        "scan_context": _compact_chat_context(scan_context),
         "recent_conversation": recent_conversation,
-        "response_length": "Answer in about 250-400 words unless a shorter answer is clearly enough.",
+        "response_length": "Use at most 5 short bullet points.",
     }
     return str(chat_chain.invoke({
         "user_question": user_question,

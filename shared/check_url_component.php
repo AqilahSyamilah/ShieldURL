@@ -176,20 +176,15 @@
                                     </div>
                                 </div>
                                 <div class="assistant-body">
-                                    <div class="assistant-starters">
-                                        <button type="button" class="assistant-starter">Why is this URL dangerous?</button>
-                                        <button type="button" class="assistant-starter">What should I do if I clicked it?</button>
-                                        <button type="button" class="assistant-starter">Explain the confidence score</button>
-                                        <button type="button" class="assistant-starter">What should IT admin do?</button>
+                                    <div class="assistant-question-panel" id="assistantQuestionPanel" aria-live="polite">
+                                        <div class="assistant-question-title" id="assistantQuestionTitle">Select a category</div>
+                                        <div class="assistant-question-list" id="assistantQuestionList"></div>
                                     </div>
                                     <div class="assistant-messages" id="assistantMessages">
                                         <div class="assistant-message notice">Please scan a URL first before using the assistant.</div>
                                     </div>
                                 </div>
-                                <form class="assistant-form assistant-input" id="assistantForm">
-                                    <input type="text" id="assistantInput" maxlength="500" placeholder="Ask about this URL scan result..." disabled>
-                                    <button type="submit" class="assistant-send" id="assistantSendBtn" disabled>Send</button>
-                                </form>
+                                <div class="assistant-category-bar" id="assistantCategoryBar" aria-label="Assistant question categories"></div>
                             </div>
                         </div>
                         <button id="assistantToggleBtn" type="button" class="assistant-toggle-btn floating-assistant-icon" style="display: none;" title="Open ShieldURL Assistant" aria-label="Open ShieldURL Assistant">

@@ -31,6 +31,7 @@ $_SESSION['mfa_required'] = (bool)$authUser['mfa_required'];
 $_SESSION['mfa_configured'] = (bool)$authUser['mfa_configured'];
 
 $currentPage = basename($_SERVER['PHP_SELF']);
+$show_transition = ($_GET['transition'] ?? '') === '1';
 
 /* FORCE PASSWORD CHANGE */
 if ($_SESSION['force_password_change'] && $currentPage !== 'change_password.php') {
@@ -57,6 +58,31 @@ if (
 ) {
     header("Location: auth/verify_2fa.php");
     exit();
+}
+
+$total_checks = 0;
+$safe_count = 0;
+$phishing_count = 0;
+
+try {
+    $statsStmt = $conn->prepare("
+        SELECT
+            COUNT(*) AS total_checks,
+            SUM(CASE WHEN status = 'safe' THEN 1 ELSE 0 END) AS safe_count,
+            SUM(CASE WHEN status = 'phishing' THEN 1 ELSE 0 END) AS phishing_count
+        FROM url_logs
+        WHERE user_id = ?
+    ");
+    $statsStmt->execute([$_SESSION['user_id']]);
+    $stats = $statsStmt->fetch();
+
+    $total_checks = (int)($stats['total_checks'] ?? 0);
+    $safe_count = (int)($stats['safe_count'] ?? 0);
+    $phishing_count = (int)($stats['phishing_count'] ?? 0);
+} catch (Exception $e) {
+    $total_checks = 0;
+    $safe_count = 0;
+    $phishing_count = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -699,6 +725,69 @@ if (
             background: #f0f9ff;
         }
 
+        .assistant-question-panel {
+            padding: 1rem 1rem 0.6rem;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .assistant-question-title {
+            color: #334155;
+            font-size: 0.86rem;
+            font-weight: 700;
+            margin-bottom: 0.65rem;
+        }
+
+        .assistant-question-list {
+            display: flex;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+
+        .assistant-question-btn,
+        .assistant-category-btn {
+            border: 1px solid #bfdbfe;
+            background: #ffffff;
+            color: #1e3a5f;
+            border-radius: 999px;
+            padding: 0.56rem 0.78rem;
+            cursor: pointer;
+            font: inherit;
+            font-size: 0.88rem;
+            line-height: 1.2;
+            transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .assistant-question-btn:hover,
+        .assistant-category-btn:hover {
+            transform: translateY(-1px);
+            background: #eff6ff;
+            border-color: #93c5fd;
+        }
+
+        .assistant-category-bar {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            padding: 0.95rem 1rem;
+            border-top: 1px solid #e2e8f0;
+            background: #ffffff;
+        }
+
+        .assistant-category-btn {
+            background: #dbeafe;
+            color: #1e3a8a;
+            font-weight: 700;
+        }
+
+        .assistant-category-btn.active {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+            color: #ffffff;
+        }
+
+        .assistant-question-btn:disabled,
+        .assistant-category-btn:disabled,
         .assistant-starter:disabled,
         .assistant-send:disabled,
         #assistantInput:disabled {
@@ -760,6 +849,21 @@ if (
             text-decoration: none;
             line-height: 1.5;
             overflow-wrap: break-word;
+        }
+
+        .assistant-answer-section + .assistant-answer-section {
+            margin-top: 0.72rem;
+        }
+
+        .assistant-answer-label {
+            display: block;
+            color: #0f172a;
+            font-weight: 800;
+            margin-bottom: 0.18rem;
+        }
+
+        .assistant-answer-text {
+            color: #334155;
         }
 
         .assistant-message.notice {
@@ -1839,6 +1943,10 @@ if (
             background: #f8fafc;
         }
 
+        .assistant-question-panel {
+            padding: 18px 24px 12px;
+        }
+
         .assistant-messages {
             flex: 1;
             min-height: 0;
@@ -1851,6 +1959,10 @@ if (
             padding: 20px;
             border-top: 1px solid #e5e7eb;
             background: #ffffff;
+        }
+
+        .assistant-category-bar {
+            padding: 16px 20px;
         }
 
         #assistantInput {
@@ -1997,6 +2109,10 @@ if (
                 padding: 16px 16px 10px;
             }
 
+            .assistant-question-panel {
+                padding: 16px 16px 10px;
+            }
+
             .assistant-messages {
                 padding: 16px;
             }
@@ -2004,6 +2120,10 @@ if (
             .assistant-input {
                 grid-template-columns: 1fr;
                 padding: 16px;
+            }
+
+            .assistant-category-bar {
+                padding: 14px 16px 16px;
             }
 
             .floating-assistant-icon {
@@ -2065,15 +2185,15 @@ if (
         <div class="stats-grid">
             <div class="stat-card">
                 <h3>URLs Checked</h3>
-                <div class="number"><?php echo $total_checks; ?></div>
+                <div class="number"><?php echo (int)($total_checks ?? 0); ?></div>
             </div>
             <div class="stat-card">
                 <h3>Safe URLs</h3>
-                <div class="number" style="color: #48bb78;"><?php echo $safe_count; ?></div>
+                <div class="number" style="color: #48bb78;"><?php echo (int)($safe_count ?? 0); ?></div>
             </div>
             <div class="stat-card">
                 <h3>Phishing</h3>
-                <div class="number" style="color: #f56565;"><?php echo $phishing_count; ?></div>
+                <div class="number" style="color: #f56565;"><?php echo (int)($phishing_count ?? 0); ?></div>
             </div>
         </div>
 
@@ -2296,6 +2416,39 @@ if (
 
             return data;
         }
+
+        async function checkSessionBeforeAction(event) {
+        try {
+        const response = await fetch('api/check_session.php', {
+            cache: 'no-store'
+        });
+
+        const data = await response.json();
+
+        if (!data.valid) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            alert('Session has destroyed. Please login.');
+            window.location.href = 'auth/login.php?err=session_destroyed';
+            return false;
+        }
+        } catch (error) {
+        event.preventDefault();
+        alert('Session has destroyed. Please login.');
+        window.location.href = 'auth/login.php?err=session_destroyed';
+        return false;
+         }
+           }
+
+        // check session whenever user clicks anything important
+        document.addEventListener('click', function(event) {
+        const target = event.target.closest('button, a, input[type="submit"]');
+
+        if (target) {
+           checkSessionBeforeAction(event);
+        }
+        }, true);
 
         function askClickedStatus() {
             const modal = document.getElementById('clickedUrlModal');
@@ -2922,7 +3075,7 @@ if (
                 toggleLabel.textContent = 'Open ShieldURL Assistant';
             }
             if (assistantPanelOpen) {
-                setTimeout(() => document.getElementById('assistantInput')?.focus(), 180);
+                setTimeout(() => document.querySelector('.assistant-category-btn:not(:disabled)')?.focus(), 180);
             }
         }
 
@@ -2970,11 +3123,56 @@ if (
             }
             const bubble = document.createElement('div');
             bubble.className = 'assistant-message ' + role;
-            bubble.textContent = text;
+            if (role === 'assistant') {
+                renderAssistantAnswer(bubble, text);
+            } else {
+                bubble.textContent = text;
+            }
             bubble.classList.add('message-enter');
             messages.appendChild(bubble);
             messages.scrollTop = messages.scrollHeight;
             return bubble;
+        }
+
+        function renderAssistantAnswer(container, text) {
+            container.textContent = '';
+            const raw = String(text || '').trim();
+            if (!raw) {
+                return;
+            }
+
+            const sections = raw.split(/\n{2,}/).map(part => part.trim()).filter(Boolean);
+            if (!sections.length) {
+                container.textContent = raw;
+                return;
+            }
+
+            sections.forEach(section => {
+                const block = document.createElement('div');
+                block.className = 'assistant-answer-section';
+                const lines = section.split(/\n/).map(line => line.trim()).filter(Boolean);
+                const firstLine = lines[0] || '';
+                const labelMatch = firstLine.match(/^([^:]{2,40}):\s*(.*)$/);
+
+                if (labelMatch) {
+                    const label = document.createElement('strong');
+                    label.className = 'assistant-answer-label';
+                    label.textContent = labelMatch[1] + ':';
+                    block.appendChild(label);
+
+                    const body = document.createElement('div');
+                    body.className = 'assistant-answer-text';
+                    body.textContent = [labelMatch[2], ...lines.slice(1)].filter(Boolean).join(' ');
+                    block.appendChild(body);
+                } else {
+                    const body = document.createElement('div');
+                    body.className = 'assistant-answer-text';
+                    body.textContent = lines.join(' ');
+                    block.appendChild(body);
+                }
+
+                container.appendChild(block);
+            });
         }
 
         function getAssistantConversation() {
@@ -2987,17 +3185,127 @@ if (
                 }));
         }
 
+        const assistantQuestionSets = {
+            'Scan Analysis Details': [
+                'What does this result mean?',
+                'Why was this URL flagged?',
+                'What is the confidence score?',
+                'What indicators were detected?',
+                'Is this URL dangerous?',
+                'Why is this URL considered safe?'
+            ],
+            'MITRE ATT&CK': [
+                'What does this MITRE tag mean?',
+                'What is T1566.002?',
+                'How is this related to phishing?',
+                'Why was this attack technique selected?',
+                'Is this credential theft?',
+                'What attack behavior was detected?'
+            ],
+            'Recommended Response': [
+                'What should I do now?',
+                'Should I block this URL?',
+                'Should I reset my password?',
+                'Should I report this incident?',
+                'What should the IT team do?',
+                'Is device isolation necessary?'
+            ],
+            'Risk & Severity': [
+                'How severe is this threat?',
+                'What does high risk mean?',
+                'Can this affect the organization?',
+                'Is this likely a false positive?',
+                'What happens if users click this URL?'
+            ],
+            'User Safety Advice': [
+                'What should I avoid doing?',
+                'Is it safe to open this link?',
+                'Can this steal credentials?',
+                'Can this install malware?',
+                'What should I tell employees?'
+            ],
+            'ShieldURL Help': [
+                'What is ShieldURL?',
+                'How does ShieldURL work?',
+                'How accurate is the detection?',
+                'What is phishing?'
+            ]
+        };
+        let assistantActiveCategory = 'Scan Analysis Details';
+
+        function renderAssistantCategories() {
+            const categoryBar = document.getElementById('assistantCategoryBar');
+            if (!categoryBar) return;
+            categoryBar.innerHTML = '';
+            Object.keys(assistantQuestionSets).forEach(category => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'assistant-category-btn' + (category === assistantActiveCategory ? ' active' : '');
+                button.textContent = category;
+                button.dataset.assistantCategory = category;
+                categoryBar.appendChild(button);
+            });
+        }
+
+        function getAssistantScanMode() {
+            const context = currentScanContext || {};
+            const detection = context.detection && typeof context.detection === 'object' ? context.detection : {};
+            const text = [
+                detection.display_verdict,
+                detection.final_verdict,
+                detection.risk_level,
+                context.display_verdict,
+                context.final_verdict,
+                context.risk_level
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            if (text.includes('potentially suspicious') || text.includes('suspicious')) {
+                return 'suspicious';
+            }
+            if (text.includes('phishing') || text.includes('high')) {
+                return 'phishing';
+            }
+            if (text.includes('safe') || text.includes('legitimate') || text.includes('low')) {
+                return 'safe';
+            }
+            return 'unknown';
+        }
+
+        function getVisibleAssistantQuestions(category) {
+            const questions = assistantQuestionSets[category] || [];
+            const mode = getAssistantScanMode();
+            return questions.filter(question => {
+                if (question === 'Why is this URL considered safe?') {
+                    return mode === 'safe';
+                }
+                return true;
+            });
+        }
+
+        function renderAssistantQuestions(category = assistantActiveCategory) {
+            assistantActiveCategory = assistantQuestionSets[category] ? category : 'Scan Analysis Details';
+            const title = document.getElementById('assistantQuestionTitle');
+            const list = document.getElementById('assistantQuestionList');
+            if (title) {
+                title.textContent = assistantActiveCategory;
+            }
+            if (!list) return;
+            list.innerHTML = '';
+            getVisibleAssistantQuestions(assistantActiveCategory).forEach(question => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'assistant-question-btn';
+                button.textContent = question;
+                button.dataset.assistantQuestion = question;
+                list.appendChild(button);
+            });
+            renderAssistantCategories();
+            setAssistantEnabled(Boolean(currentScanContext));
+        }
+
         function setAssistantEnabled(enabled) {
-            const input = document.getElementById('assistantInput');
-            const sendBtn = document.getElementById('assistantSendBtn');
-            const starters = document.querySelectorAll('.assistant-starter');
-            if (input) {
-                input.disabled = !enabled || assistantIsLoading;
-            }
-            if (sendBtn) {
-                sendBtn.disabled = !enabled || assistantIsLoading;
-            }
-            starters.forEach(button => {
+            const buttons = document.querySelectorAll('.assistant-question-btn, .assistant-category-btn');
+            buttons.forEach(button => {
                 button.disabled = !enabled || assistantIsLoading;
             });
         }
@@ -3009,15 +3317,13 @@ if (
             const messages = document.getElementById('assistantMessages');
             if (messages) {
                 messages.innerHTML = '';
-                appendAssistantMessage('assistant', 'Welcome. I am ShieldURL Assistant. How can I help you today?');
+                appendAssistantMessage('assistant', 'Welcome. Choose a category, then select a question about this scan result.');
                 if (!hasContext) {
                     appendAssistantMessage('notice', 'Please scan a URL first before using the assistant.');
                 }
             }
-            const input = document.getElementById('assistantInput');
-            if (input) {
-                input.value = '';
-            }
+            assistantActiveCategory = 'Scan Analysis Details';
+            renderAssistantQuestions(assistantActiveCategory);
             setAssistantEnabled(hasContext);
             updateAssistantToggleAvailability(hasContext);
         }
@@ -3040,7 +3346,7 @@ if (
             appendAssistantMessage('user', trimmed);
             assistantIsLoading = true;
             setAssistantEnabled(true);
-            const loadingBubble = appendAssistantMessage('assistant', 'ShieldURL Assistant is analyzing the scan context...');
+            const loadingBubble = appendAssistantMessage('assistant', 'ShieldURL Assistant is analyzing...');
 
             try {
                 const conversation = getAssistantConversation();
@@ -3059,27 +3365,25 @@ if (
                     }),
                 });
                 const result = await parseJsonResponse(response);
-                loadingBubble.textContent = result.answer || 'The assistant is temporarily unavailable, but the scan result remains valid. Please follow the recommended actions.';
+                renderAssistantAnswer(loadingBubble, result.answer || 'Status:\nThe assistant is temporarily unavailable, but the scan result remains valid.\n\nRecommended action:\nPlease follow the displayed recommended actions.');
             } catch (error) {
-                loadingBubble.textContent = 'The assistant is temporarily unavailable, but the scan result remains valid. Please follow the recommended actions.';
+                renderAssistantAnswer(loadingBubble, 'Status:\nThe assistant is temporarily unavailable, but the scan result remains valid.\n\nRecommended action:\nPlease follow the displayed recommended actions.');
             } finally {
                 assistantIsLoading = false;
                 setAssistantEnabled(Boolean(currentScanContext));
-                const input = document.getElementById('assistantInput');
-                if (input) {
-                    input.value = '';
-                    input.focus();
-                }
             }
         }
 
-        document.getElementById('assistantForm').addEventListener('submit', (event) => {
-            event.preventDefault();
-            sendAssistantQuestion(document.getElementById('assistantInput').value);
+        document.getElementById('assistantCategoryBar')?.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-assistant-category]');
+            if (!button || button.disabled) return;
+            renderAssistantQuestions(button.dataset.assistantCategory);
         });
 
-        document.querySelectorAll('.assistant-starter').forEach(button => {
-            button.addEventListener('click', () => sendAssistantQuestion(button.textContent));
+        document.getElementById('assistantQuestionList')?.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-assistant-question]');
+            if (!button || button.disabled) return;
+            sendAssistantQuestion(button.dataset.assistantQuestion);
         });
 
         const assistantToggleBtn = document.getElementById('assistantToggleBtn');

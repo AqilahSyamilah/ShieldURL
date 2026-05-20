@@ -769,3 +769,147 @@ Content-Length: 74
 < 
 * Connection #0 to host 127.0.0.1 left intact
 curl_errno=0 curl_error= http_code=200 total=6.042999
+
+[2026-05-20T11:49:07+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/service-gestions-paiements-antai.trisaincorporadora.com.br\/infodossier\/redirect","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 138
+
+< HTTP/1.1 200 OK
+< date: Wed, 20 May 2026 09:49:07 GMT
+< server: uvicorn
+< content-length: 4523
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=20.542289
+
+[2026-05-20T12:10:11+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/paypal-security-update.com\/login","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 90
+
+< HTTP/1.1 200 OK
+< date: Wed, 20 May 2026 10:10:10 GMT
+< server: uvicorn
+< content-length: 4404
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=4.148074
+
+[2026-05-20T12:18:19+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/paypal-security-update.com\/login","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 90
+
+< HTTP/1.1 200 OK
+< date: Wed, 20 May 2026 10:18:19 GMT
+< server: uvicorn
+< content-length: 4404
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=6.291078
+
+[2026-05-20T12:25:26+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/paypal-security-update.com\/login","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 90
+
+< HTTP/1.1 200 OK
+< date: Wed, 20 May 2026 10:25:25 GMT
+< server: uvicorn
+< content-length: 4404
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=5.65669
+
+[2026-05-20T12:48:49+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/paypal-security-update.com\/login","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 90
+
+< HTTP/1.1 200 OK
+< date: Wed, 20 May 2026 10:48:49 GMT
+< server: uvicorn
+< content-length: 4406
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=18.133733
+
+[2026-05-20T13:04:40+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/service-gestions-paiements-antai.trisaincorporadora.com.br\/infodossier\/redirect","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 138
+
+< HTTP/1.1 200 OK
+< date: Wed, 20 May 2026 11:04:40 GMT
+< server: uvicorn
+< content-length: 4519
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=3.61458
+
+[2026-05-20T13:09:57+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/paypal-security-update.com\/login","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 90
+
+< HTTP/1.1 200 OK
+< date: Wed, 20 May 2026 11:09:57 GMT
+< server: uvicorn
+< content-length: 4404
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=3.814534
+
+[2026-05-20T13:21:46+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/paypal-security-update.com\/login","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 90
+
+< HTTP/1.1 200 OK
+< date: Wed, 20 May 2026 11:21:46 GMT
+< server: uvicorn
+< content-length: 4404
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=5.314376

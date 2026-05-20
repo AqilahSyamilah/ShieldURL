@@ -2,8 +2,8 @@
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 error_reporting(E_ALL);
-ini_set('max_execution_time', '90');
-set_time_limit(90);
+ini_set('max_execution_time', '30');
+set_time_limit(30);
 
 require_once '../config/db.php';
 
@@ -184,7 +184,7 @@ $payload = json_encode([
 if (!function_exists('curl_init')) {
     chat_json([
         'success' => false,
-        'answer' => 'The assistant is temporarily unavailable, but the scan result remains valid. Please follow the recommended actions.',
+        'answer' => 'The assistant timed out. The scan result is still valid; follow the displayed recommended actions.',
         'used_scan_context' => true,
         'safety_notice' => 'Detection result was not modified by the LLM.',
         'message' => 'PHP cURL extension is not enabled.'
@@ -197,8 +197,8 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-curl_setopt($ch, CURLOPT_TIMEOUT, 75);
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+curl_setopt($ch, CURLOPT_TIMEOUT, 23);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -212,7 +212,7 @@ $api = is_string($response) ? json_decode($response, true) : null;
 if (!is_array($api) || $httpCode < 200 || $httpCode >= 300) {
     $answerStatus = 'fallback';
     $api = [
-        'answer' => 'The assistant is temporarily unavailable, but the scan result remains valid. Please follow the recommended actions.',
+        'answer' => 'The assistant timed out. The scan result is still valid; follow the displayed recommended actions.',
         'used_scan_context' => true,
         'safety_notice' => 'Detection result was not modified by the LLM.',
         'debug' => [
@@ -246,7 +246,7 @@ try {
 
 chat_json([
     'success' => true,
-    'answer' => strval($api['answer'] ?? 'The assistant is temporarily unavailable, but the scan result remains valid. Please follow the recommended actions.'),
+    'answer' => strval($api['answer'] ?? 'The assistant timed out. The scan result is still valid; follow the displayed recommended actions.'),
     'used_scan_context' => (bool)($api['used_scan_context'] ?? true),
     'safety_notice' => strval($api['safety_notice'] ?? 'Detection result was not modified by the LLM.'),
     'latency_ms' => $latencyMs,
