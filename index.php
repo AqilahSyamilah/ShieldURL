@@ -2,7 +2,6 @@
 session_start();
 
 require_once 'config/db.php';
-require_once 'auth/login.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: auth/login.php");
@@ -13,18 +12,12 @@ $db = new Database();
 $conn = $db->getConnection();
 
 $authStmt = $conn->prepare("
-    SELECT 
-        force_password_change,
-        mfa_required,
-        mfa_configured
+    SELECT force_password_change, mfa_required, mfa_configured
     FROM users
-    WHERE id=? 
-    AND is_active=TRUE
+    WHERE id = ? AND is_active = TRUE
     LIMIT 1
 ");
-
 $authStmt->execute([$_SESSION['user_id']]);
-
 $authUser = $authStmt->fetch();
 
 if (!$authUser) {
@@ -37,30 +30,33 @@ $_SESSION['force_password_change'] = (bool)$authUser['force_password_change'];
 $_SESSION['mfa_required'] = (bool)$authUser['mfa_required'];
 $_SESSION['mfa_configured'] = (bool)$authUser['mfa_configured'];
 
-/* FORCE PASSWORD CHANGE */
-if ($_SESSION['force_password_change']) {
+$currentPage = basename($_SERVER['PHP_SELF']);
 
-    if (basename($_SERVER['PHP_SELF']) !== 'change_password.php') {
-        header("Location: auth/change_password.php");
-        exit();
-    }
+/* FORCE PASSWORD CHANGE */
+if ($_SESSION['force_password_change'] && $currentPage !== 'change_password.php') {
+    header("Location: auth/change_password.php?first_login=1");
+    exit();
 }
 
 /* FORCE MFA SETUP */
 if (
     $_SESSION['mfa_required'] &&
-    !$_SESSION['mfa_configured']
+    !$_SESSION['mfa_configured'] &&
+    !in_array($currentPage, ['mfa_setup.php', 'verify_2fa.php'])
 ) {
+    header("Location: auth/mfa_setup.php");
+    exit();
+}
 
-    $allowedPages = [
-        'setup_2fa.php',
-        'verify_2fa.php'
-    ];
-
-    if (!in_array(basename($_SERVER['PHP_SELF']), $allowedPages)) {
-        header("Location: auth/setup_2fa.php");
-        exit();
-    }
+/* FORCE MFA VERIFICATION EVERY LOGIN SESSION */
+if (
+    $_SESSION['mfa_required'] &&
+    $_SESSION['mfa_configured'] &&
+    empty($_SESSION['mfa_verified']) &&
+    $currentPage !== 'verify_2fa.php'
+) {
+    header("Location: auth/verify_2fa.php");
+    exit();
 }
 ?>
 <!DOCTYPE html>
