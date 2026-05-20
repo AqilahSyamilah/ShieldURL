@@ -1,5 +1,8 @@
 <?php
+session_start();
+
 require_once 'config/db.php';
+require_once 'auth/login.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: auth/login.php");
@@ -9,40 +12,56 @@ if (!isset($_SESSION['user_id'])) {
 $db = new Database();
 $conn = $db->getConnection();
 
-$authStmt = $conn->prepare("SELECT force_password_change, mfa_required, mfa_configured FROM users WHERE id=? AND is_active=TRUE LIMIT 1");
+$authStmt = $conn->prepare("
+    SELECT 
+        force_password_change,
+        mfa_required,
+        mfa_configured
+    FROM users
+    WHERE id=? 
+    AND is_active=TRUE
+    LIMIT 1
+");
+
 $authStmt->execute([$_SESSION['user_id']]);
+
 $authUser = $authStmt->fetch();
+
 if (!$authUser) {
     session_destroy();
     header("Location: auth/login.php?err=User not found");
     exit();
 }
+
 $_SESSION['force_password_change'] = (bool)$authUser['force_password_change'];
 $_SESSION['mfa_required'] = (bool)$authUser['mfa_required'];
 $_SESSION['mfa_configured'] = (bool)$authUser['mfa_configured'];
+
+/* FORCE PASSWORD CHANGE */
 if ($_SESSION['force_password_change']) {
-    header("Location: auth/change_password.php?first_login=1");
-    exit();
+
+    if (basename($_SERVER['PHP_SELF']) !== 'change_password.php') {
+        header("Location: auth/change_password.php");
+        exit();
+    }
 }
-if ($_SESSION['mfa_required'] && !$_SESSION['mfa_configured']) {
-    header("Location: auth/mfa_setup.php");
-    exit();
+
+/* FORCE MFA SETUP */
+if (
+    $_SESSION['mfa_required'] &&
+    !$_SESSION['mfa_configured']
+) {
+
+    $allowedPages = [
+        'setup_2fa.php',
+        'verify_2fa.php'
+    ];
+
+    if (!in_array(basename($_SERVER['PHP_SELF']), $allowedPages)) {
+        header("Location: auth/setup_2fa.php");
+        exit();
+    }
 }
-
-// Get user's statistics
-$stmt = $conn->prepare("SELECT COUNT(*) as total_checks FROM url_logs WHERE user_id=?");
-$stmt->execute([$_SESSION['user_id']]);
-$total_checks = $stmt->fetch()['total_checks'];
-
-$stmt = $conn->prepare("SELECT COUNT(*) as phishing_count FROM url_logs WHERE user_id=? AND status='phishing'");
-$stmt->execute([$_SESSION['user_id']]);
-$phishing_count = $stmt->fetch()['phishing_count'];
-
-$stmt = $conn->prepare("SELECT COUNT(*) as safe_count FROM url_logs WHERE user_id=? AND status='safe'");
-$stmt->execute([$_SESSION['user_id']]);
-$safe_count = $stmt->fetch()['safe_count'];
-
-$show_transition = isset($_GET['transition']) && $_GET['transition'] === '1';
 ?>
 <!DOCTYPE html>
 <html lang="en">
