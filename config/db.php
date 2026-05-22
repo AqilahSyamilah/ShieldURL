@@ -6,13 +6,13 @@ if (session_status() === PHP_SESSION_NONE) {
 class Database
 {
     
-    // ===== LOCALHOST XAMPP =====
-    private $host = "127.0.0.1";
-    private $db_name = "shieldurl";
-    private $username = "root";
-    private $password = "";
-    private $port = 3306;
-    /*
+    // // ===== LOCALHOST XAMPP =====
+    // private $host = "127.0.0.1";
+    // private $db_name = "shieldurl";
+    // private $username = "root";
+    // private $password = "";
+    // private $port = 3306;
+    
     // ===== VPS HOSTING =====
     
     private $host = "127.0.0.1";
@@ -20,7 +20,7 @@ class Database
     private $username = "shieldurl_user";
     private $password = "ShieldURL@123";
     private $port = 3306;
-    */
+    
 
     public $conn;
 
