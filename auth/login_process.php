@@ -48,6 +48,7 @@ $_SESSION['role'] = $user['role'];
 $_SESSION['force_password_change'] = (bool)($user['force_password_change'] ?? false);
 $_SESSION['mfa_required'] = (bool)($user['mfa_required'] ?? false);
 $_SESSION['mfa_configured'] = (bool)($user['mfa_configured'] ?? false);
+$_SESSION['mfa_verified'] = false;
 
 $conn->prepare("UPDATE users SET last_login=NOW() WHERE id=?")->execute([$user['id']]);
 audit_log($conn, 'login_success', 'User logged in successfully', 'success');
@@ -59,6 +60,11 @@ if ($_SESSION['force_password_change']) {
 
 if ($_SESSION['mfa_required'] && !$_SESSION['mfa_configured']) {
     header("Location: mfa_setup.php");
+    exit();
+}
+
+if ($_SESSION['mfa_required'] && $_SESSION['mfa_configured']) {
+    header("Location: verify_2fa.php");
     exit();
 }
 

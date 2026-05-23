@@ -1,5 +1,6 @@
 <?php
 require_once '../config/db.php';
+require_once '../shared/verdict_report.php';
 
 header('Content-Type: application/json');
 
@@ -58,6 +59,8 @@ $safeDecode = function ($value, $fallback) {
 };
 
 $analysis = $safeDecode($report['analysis_result'] ?? '', []);
+$reportAudience = (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ? 'admin' : 'user';
+$llmReport = shield_apply_verdict_report($analysis, $report, $analysis['llm_report'] ?? [], $reportAudience);
 $scanDuration = $analysis['debug']['php_total_seconds'] ?? $analysis['debug']['curl_total_seconds'] ?? null;
 
 $auditStmt = $conn->prepare("
@@ -79,23 +82,27 @@ echo json_encode([
     'user_id' => (int) $report['user_id'],
     'username' => $report['username'] ?? '',
     'url' => $report['url'],
-    'status' => $report['status'],
+    'status' => $analysis['status'] ?? $report['status'],
     'display_status' => $analysis['display_status'] ?? ($analysis['overall']['display_verdict'] ?? $report['status']),
-    'confidence_score' => (float) $report['confidence_score'],
+    'confidence_score' => (float)($analysis['phishing_probability'] ?? ($analysis['confidence_score'] ?? $report['confidence_score'])),
     'phishing_probability' => (float)($analysis['phishing_probability'] ?? ($analysis['ml']['phishing_probability'] ?? $report['confidence_score'])),
     'selected_threshold' => (float)($analysis['selected_threshold'] ?? ($analysis['ml']['selected_threshold'] ?? 0.5)),
-    'model_policy' => $analysis['model_policy'] ?? ($analysis['ml']['model_policy'] ?? 'The system uses advanced URL detection analysis to identify suspicious website patterns.'),
-    'risk_level' => $report['risk_level'] ?? '',
+    'model_policy' => $analysis['model_policy'] ?? ($llmReport['model_policy'] ?? shield_dynamic_policy_text($llmReport['verdict_category'] ?? 'safe')),
+    'risk_level' => $analysis['risk_level'] ?? ($report['risk_level'] ?? ''),
+    'user_interaction_status' => $analysis['user_interaction_status'] ?? ($llmReport['user_interaction_status'] ?? 'Not collected'),
+    'report_audience' => $reportAudience,
     'analyzed_at' => $report['analyzed_at'],
     'scan_duration' => $scanDuration,
     'detection_engine' => 'ShieldURL ML + LLM Incident Response',
     'ip_address' => $audit['ip_address'] ?? '',
     'country' => $audit['country'] ?? '',
-    'llm_summary' => $report['llm_summary'] ?? '',
+    'llm_report' => $llmReport,
+    'llm_summary' => $llmReport['incident_summary'] ?? ($report['llm_summary'] ?? ''),
     'features' => $safeDecode($report['features'] ?? '', new stdClass()),
-    'incident_response' => $safeDecode($report['incident_response_text'] ?? '', []),
-    'nist_response' => $safeDecode($report['nist_response_json'] ?? '', []),
-    'mitre_attack' => $safeDecode($report['mitre_attack_json'] ?? '', []),
-    'user_advisory' => $report['user_advisory_text'] ?? '',
+    'incident_response' => $llmReport['eradication_recovery_actions'] ?? [],
+    'nist_response' => $llmReport['containment_actions'] ?? [],
+    'post_incident_recommendations' => $llmReport['post_incident_recommendations'] ?? [],
+    'mitre_attack' => $llmReport['mitre_attack_mapping'] ?? [],
+    'user_advisory' => $llmReport['user_advisory'] ?? ($report['user_advisory_text'] ?? ''),
 ]);
 ?>

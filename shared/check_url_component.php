@@ -59,9 +59,13 @@
                                                 <div class="summary-label">Risk Level</div>
                                                 <div class="summary-value" id="riskLevelValue">-</div>
                                             </div>
-                                            <div class="summary-card">
+                                            <div class="summary-card" id="mitreSummaryCard">
                                                 <div class="summary-label">MITRE Technique</div>
-                                                <div class="summary-value" id="mitrePrimaryValue">-</div>
+                                                <div class="summary-value" id="mitrePrimaryValue">Not Applicable</div>
+                                            </div>
+                                            <div class="summary-card">
+                                                <div class="summary-label">User Interaction Status</div>
+                                                <div class="summary-value" id="interactionStatusValue">Not collected</div>
                                             </div>
                                         </div>
                                         <div class="result-field" style="margin-bottom: 0;">
@@ -70,29 +74,31 @@
                                                 <a id="resultUrl" href="#" target="_blank" style="word-break: break-all;">Loading...</a>
                                             </div>
                                         </div>
-                                        <div class="result-field" style="margin-top: 0.9rem; margin-bottom: 0;">
-                                            <label>Scan Decision Explanation</label>
-                                            <div class="summary-grid" style="margin-top: 0.55rem;">
-                                                <div class="summary-card">
-                                                    <div class="summary-label">Phishing Probability</div>
-                                                    <div class="summary-value" id="modelPhishingProbability">-</div>
+                                        <div class="decision-panel">
+                                            <div class="result-field" style="margin-bottom: 0;">
+                                                <label>Scan Decision Explanation</label>
+                                                <div class="summary-grid" style="margin-top: 0.55rem;">
+                                                    <div class="summary-card">
+                                                        <div class="summary-label">Phishing Probability</div>
+                                                        <div class="summary-value" id="modelPhishingProbability">-</div>
+                                                    </div>
+                                                    <div class="summary-card">
+                                                        <div class="summary-label">Detection Sensitivity</div>
+                                                        <div class="summary-value" id="modelSelectedThreshold">-</div>
+                                                    </div>
+                                                    <div class="summary-card">
+                                                        <div class="summary-label">System Detection</div>
+                                                        <div class="summary-value" id="modelFinalVerdict">-</div>
+                                                    </div>
+                                                    <div class="summary-card">
+                                                        <div class="summary-label">Safety Status</div>
+                                                        <div class="summary-value" id="modelDisplayVerdict">-</div>
+                                                    </div>
                                                 </div>
-                                                <div class="summary-card">
-                                                    <div class="summary-label">Detection Sensitivity</div>
-                                                    <div class="summary-value" id="modelSelectedThreshold">-</div>
-                                                </div>
-                                                <div class="summary-card">
-                                                    <div class="summary-label">System Detection</div>
-                                                    <div class="summary-value" id="modelFinalVerdict">-</div>
-                                                </div>
-                                                <div class="summary-card">
-                                                    <div class="summary-label">Safety Status</div>
-                                                    <div class="summary-value" id="modelDisplayVerdict">-</div>
-                                                </div>
+                                                <p class="incident-text" id="modelPolicyText" style="margin-top: 0.65rem;">
+                                                    No major phishing indicators were identified during analysis.
+                                                </p>
                                             </div>
-                                            <p class="incident-text" id="modelPolicyText" style="margin-top: 0.65rem;">
-                                                The system uses advanced URL detection analysis to identify suspicious website patterns.
-                                            </p>
                                         </div>
                                     </div>
 
@@ -105,15 +111,15 @@
                                         <label style="margin-bottom: 0.6rem;">Recommended Actions</label>
                                         <div class="action-grid">
                                             <div class="action-card">
-                                                <h4>Containment</h4>
+                                                <h4 id="containmentTitle" class="sr-only">Recommended Actions</h4>
                                                 <ul id="containmentList"></ul>
                                             </div>
                                             <div class="action-card">
-                                                <h4>Eradication & Recovery</h4>
+                                                <h4 id="eradicationTitle">Follow-Up</h4>
                                                 <ul id="eradicationList"></ul>
                                             </div>
                                             <div class="action-card">
-                                                <h4>Post-Incident Recommendations</h4>
+                                                <h4 id="postIncidentTitle">Additional Guidance</h4>
                                                 <ul id="postIncidentList"></ul>
                                             </div>
                                             <div class="action-card">

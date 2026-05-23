@@ -6,6 +6,7 @@ ini_set('max_execution_time', '120');
 set_time_limit(120);
 
 require_once '../config/db.php';
+require_once '../shared/verdict_report.php';
 
 header('Content-Type: application/json');
 
@@ -45,6 +46,7 @@ $db = new Database();
 $conn = $db->getConnection();
 
 $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+$reportAudience = $isAdmin ? 'admin' : 'user';
 if ($isAdmin) {
     $stmt = $conn->prepare('SELECT * FROM url_logs WHERE id = ? LIMIT 1');
     $stmt->execute([$reportId]);
@@ -58,19 +60,25 @@ if (!$row) {
 }
 
 $analysis = safe_decode_report($row['analysis_result'] ?? '');
+$reportContext = $analysis;
+shield_apply_verdict_report($reportContext, $row, [], $reportAudience);
 $existingReport = $analysis['llm_report'] ?? [];
 if (is_array($existingReport) && !empty($existingReport) && (($existingReport['status'] ?? '') !== 'pending')) {
+    $llmReport = shield_apply_verdict_report($analysis, $row, $existingReport, $reportAudience);
     respond_json([
         'success' => true,
         'cache_used' => true,
         'llm_pending' => false,
-        'llm_report' => $existingReport,
-        'llm' => $existingReport,
-        'llm_summary' => $existingReport['incident_summary'] ?? '',
-        'mitre_techniques' => $existingReport['mitre_attack_mapping'] ?? [],
-        'nist_response' => $existingReport['containment_actions'] ?? [],
-        'incident_response' => $existingReport['eradication_recovery_actions'] ?? [],
-        'user_advisory' => $existingReport['user_advisory'] ?? '',
+        'llm_report' => $llmReport,
+        'llm' => $llmReport,
+        'llm_summary' => $llmReport['incident_summary'] ?? '',
+        'mitre_techniques' => $llmReport['mitre_attack_mapping'] ?? [],
+        'nist_response' => $llmReport['containment_actions'] ?? [],
+        'incident_response' => $llmReport['eradication_recovery_actions'] ?? [],
+        'post_incident_recommendations' => $llmReport['post_incident_recommendations'] ?? [],
+        'user_advisory' => $llmReport['user_advisory'] ?? '',
+        'user_interaction_status' => $llmReport['user_interaction_status'] ?? 'Not collected',
+        'report_audience' => $reportAudience,
         'timing' => [
             'detection_seconds' => 0,
             'llm_seconds' => 0,
@@ -84,9 +92,9 @@ if (is_array($existingReport) && !empty($existingReport) && (($existingReport['s
 $payload = json_encode([
     'url' => $row['url'],
     'clicked' => $analysis['clicked'] ?? null,
-    'verdict' => $analysis['display_status'] ?? ($analysis['overall']['display_verdict'] ?? $row['status']),
-    'confidence' => floatval($analysis['phishing_probability'] ?? $row['confidence_score']),
-    'risk' => $row['risk_level'] ?? ($analysis['risk_level'] ?? 'low'),
+    'verdict' => $reportContext['display_status'] ?? ($analysis['display_status'] ?? ($analysis['overall']['display_verdict'] ?? $row['status'])),
+    'confidence' => shield_unit_probability($reportContext['phishing_probability'] ?? ($analysis['phishing_probability'] ?? ($analysis['ml']['phishing_probability'] ?? $row['confidence_score']))),
+    'risk' => $reportContext['risk_level'] ?? ($analysis['risk_level'] ?? ($row['risk_level'] ?? 'low')),
 ]);
 
 if (!function_exists('curl_init')) {
@@ -120,9 +128,8 @@ $llmReport = $api['llm_report'] ?? ($api['llm'] ?? []);
 if (!is_array($llmReport)) {
     $llmReport = [];
 }
+$llmReport = shield_apply_verdict_report($analysis, $row, $llmReport, $reportAudience);
 
-$analysis['llm_report'] = $llmReport;
-$analysis['llm'] = $llmReport;
 $analysis['llm_pending'] = false;
 $analysis['cache_used'] = false;
 $analysis['timing']['llm_seconds'] = $api['timing']['llm_seconds'] ?? null;
@@ -155,7 +162,10 @@ respond_json([
     'mitre_techniques' => $llmReport['mitre_attack_mapping'] ?? [],
     'nist_response' => $llmReport['containment_actions'] ?? [],
     'incident_response' => $llmReport['eradication_recovery_actions'] ?? [],
+    'post_incident_recommendations' => $llmReport['post_incident_recommendations'] ?? [],
     'user_advisory' => $llmReport['user_advisory'] ?? '',
+    'user_interaction_status' => $llmReport['user_interaction_status'] ?? 'Not collected',
+    'report_audience' => $reportAudience,
     'timing' => $analysis['timing'] ?? [],
 ]);
 ?>

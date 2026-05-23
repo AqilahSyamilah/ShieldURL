@@ -1058,9 +1058,18 @@ try {
             margin-bottom: 1.5rem;
         }
 
-        .result-field label {
-            font-weight: 600;
-            color: #666;
+        .decision-panel {
+            margin-top: 0.9rem;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(100, 116, 139, 0.12);
+            border: 1px solid rgba(100, 116, 139, 0.18);
+        }
+
+        .result-field label,
+        .dashboard-card label {
+            font-weight: 800;
+            color: #000000;
             display: block;
             margin-bottom: 0.5rem;
         }
@@ -1240,8 +1249,9 @@ try {
 
         .action-card h4 {
             font-size: 1rem;
+            font-weight: 800;
             margin-bottom: 0.5rem;
-            color: #0b1f3a;
+            color: #000000;
         }
 
         .action-card ul {
@@ -1381,21 +1391,106 @@ try {
         .settings-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.9rem;
+            gap: 1rem;
         }
 
         .settings-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 1rem;
-            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.07);
+            border-radius: 16px;
+            padding: 1.1rem;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
         }
 
         .settings-card h3 {
             font-size: 1rem;
-            margin-bottom: 0.75rem;
+            margin: 0 0 0.9rem;
             color: #0b1f3a;
+        }
+
+        .settings-card label {
+            font-weight: 700;
+            color: #334155;
+        }
+
+        .settings-card input,
+        .settings-card select {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            background: #f8fafc;
+            color: #0f172a;
+            font: inherit;
+            padding: 0.62rem 0.75rem;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .settings-card input:focus,
+        .settings-card select:focus {
+            outline: none;
+            border-color: #2563eb;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+        }
+
+        .password-hold-field {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: stretch;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            background: #f8fafc;
+            overflow: hidden;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .password-hold-field:focus-within {
+            border-color: #2563eb;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+        }
+
+        .password-hold-field input {
+            min-height: 42px;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .password-hold-field input:focus {
+            box-shadow: none;
+            background: transparent;
+        }
+
+        .password-hold-btn {
+            min-width: 72px;
+            border: 0;
+            border-left: 1px solid #cbd5e1;
+            background: #e2e8f0;
+            color: #000000;
+            font: inherit;
+            font-size: 0.82rem;
+            font-weight: 800;
+            cursor: pointer;
+            padding: 0 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-hold-btn:active,
+        .password-hold-btn.is-holding {
+            background: #bfdbfe;
+            color: #000000;
+        }
+
+        .password-hold-btn svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            pointer-events: none;
         }
 
         .avatar-wrap {
@@ -2286,7 +2381,7 @@ try {
                                 <div class="avatar-wrap">
                                     <img id="profilePhotoPreview" class="avatar-preview" src="img/logo.png" alt="Profile photo preview">
                                     <div>
-                                        <label for="profilePhotoInput" class="btn-check" style="display: inline-block; padding: 0.55rem 0.85rem;">Upload Photo</label>
+                                        <label for="profilePhotoInput" class="btn-check" style="display: inline-block; padding: 0.55rem 0.85rem; color: #ffffff;">Upload Photo</label>
                                         <input type="file" id="profilePhotoInput" accept=".jpg,.jpeg,.png" style="display:none;">
                                         <div class="settings-help">Accepted: JPG, JPEG, PNG. Preview only.</div>
                                         <div class="form-error" id="profilePhotoError"></div>
@@ -2309,15 +2404,39 @@ try {
                                 <form id="changePasswordForm">
                                     <div class="settings-row">
                                         <label for="currentPassword">Current Password</label>
-                                        <input id="currentPassword" type="password" autocomplete="current-password">
+                                        <div class="password-hold-field">
+                                            <input id="currentPassword" type="password" autocomplete="current-password">
+                                            <button class="password-hold-btn" type="button" data-password-target="currentPassword" aria-label="Hold to view current password" title="Hold to view password">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="settings-row">
                                         <label for="newPassword">New Password</label>
-                                        <input id="newPassword" type="password" autocomplete="new-password">
+                                        <div class="password-hold-field">
+                                            <input id="newPassword" type="password" autocomplete="new-password">
+                                            <button class="password-hold-btn" type="button" data-password-target="newPassword" aria-label="Hold to view new password" title="Hold to view password">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="settings-row">
                                         <label for="confirmPassword">Confirm New Password</label>
-                                        <input id="confirmPassword" type="password" autocomplete="new-password">
+                                        <div class="password-hold-field">
+                                            <input id="confirmPassword" type="password" autocomplete="new-password">
+                                            <button class="password-hold-btn" type="button" data-password-target="confirmPassword" aria-label="Hold to view confirm password" title="Hold to view password">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                                    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <button type="submit" class="btn-check" style="padding: 0.55rem 0.95rem;">Update Password</button>
                                     <div class="form-error" id="passwordError"></div>
@@ -2615,6 +2734,7 @@ try {
                 confidenceWidth: document.getElementById('confidenceFill').style.width,
                 riskText: document.getElementById('riskLevelValue').textContent,
                 mitrePrimary: document.getElementById('mitrePrimaryValue').textContent,
+                interactionStatus: document.getElementById('interactionStatusValue')?.textContent || 'Not collected',
                 resultUrlHref: document.getElementById('resultUrl').href,
                 resultUrlText: document.getElementById('resultUrl').textContent,
                 modelPhishingProbability: document.getElementById('modelPhishingProbability').textContent,
@@ -2640,13 +2760,14 @@ try {
         function renderSimpleListFromSnapshot(containerId, items, fallbackText) {
             const container = document.getElementById(containerId);
             if (!container) return;
+            const card = container.closest('.action-card');
             container.innerHTML = '';
-            if (!items || !items.length) {
-                const li = document.createElement('li');
-                li.textContent = fallbackText;
-                container.appendChild(li);
+            items = dedupeRenderItems(items || []);
+            if (!items.length) {
+                if (card) card.style.display = 'none';
                 return;
             }
+            if (card) card.style.display = '';
             items.forEach(text => {
                 const li = document.createElement('li');
                 li.textContent = text;
@@ -2662,7 +2783,8 @@ try {
             document.getElementById('confidenceScore').textContent = snap.confidenceText;
             document.getElementById('confidenceFill').style.width = snap.confidenceWidth;
             document.getElementById('riskLevelValue').textContent = snap.riskText;
-            document.getElementById('mitrePrimaryValue').textContent = snap.mitrePrimary;
+            updateMitreSummary('', String(snap.statusText || '').toLowerCase().includes('safe') ? 'safe' : '', snap.mitrePrimary);
+            if (document.getElementById('interactionStatusValue')) document.getElementById('interactionStatusValue').textContent = snap.interactionStatus || 'Not collected';
             document.getElementById('resultUrl').href = snap.resultUrlHref;
             document.getElementById('resultUrl').textContent = snap.resultUrlText;
             document.getElementById('modelPhishingProbability').textContent = snap.modelPhishingProbability || 'Not Collected';
@@ -2674,9 +2796,9 @@ try {
             document.getElementById('analyzedTime').textContent = snap.analyzedTime;
             document.getElementById('analysisDetails').textContent = snap.analysisDetails;
             document.getElementById('userAdvisory').textContent = snap.userAdvisory;
-            renderSimpleListFromSnapshot('containmentList', snap.containmentItems, 'No containment steps provided.');
-            renderSimpleListFromSnapshot('eradicationList', snap.eradicationItems, 'No eradication and recovery steps provided.');
-            renderSimpleListFromSnapshot('postIncidentList', snap.postIncidentItems, 'No post-incident recommendations provided.');
+            renderSimpleListFromSnapshot('containmentList', snap.containmentItems, '');
+            renderSimpleListFromSnapshot('eradicationList', snap.eradicationItems, '');
+            renderSimpleListFromSnapshot('postIncidentList', snap.postIncidentItems, '');
             const mitreContainer = document.getElementById('mitreTags');
             mitreContainer.innerHTML = '';
             (snap.mitreTags || []).forEach(text => {
@@ -2754,9 +2876,30 @@ try {
         function simplePolicyText(value) {
             const text = String(value || '').trim();
             if (!text || /lexical model|false negatives|threshold|recall/i.test(text)) {
-                return 'The system uses advanced URL detection analysis to identify suspicious website patterns.';
+                return 'No major phishing indicators were identified during analysis.';
             }
             return text;
+        }
+
+        function dedupeRenderItems(items) {
+            const seen = new Set();
+            return (items || []).filter(item => {
+                const key = String(item || '').trim().toLowerCase();
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+
+        function verdictPolicyText(displayVerdict, fallback) {
+            const verdict = String(displayVerdict || '').toLowerCase();
+            if (verdict.includes('phishing') && !verdict.includes('suspicious')) {
+                return 'Phishing was detected by the URL model; confidence and risk level determine response severity.';
+            }
+            if (verdict.includes('suspicious')) {
+                return 'Several suspicious URL characteristics were identified during analysis.';
+            }
+            return simplePolicyText(fallback || 'No major phishing indicators were identified during analysis.');
         }
 
         function updateModelDecisionExplanation(data) {
@@ -2764,13 +2907,32 @@ try {
             const threshold = data?.selected_threshold ?? data?.ml?.selected_threshold ?? data?.detection?.lexical_threshold;
             const finalVerdict = data?.status ?? data?.detection?.final_verdict ?? data?.overall?.status ?? 'unknown';
             const displayVerdict = data?.display_status ?? data?.overall?.display_verdict ?? data?.detection?.display_verdict ?? finalVerdict;
-            const policy = simplePolicyText(data?.model_policy ?? data?.overall?.model_policy ?? data?.ml?.model_policy ?? data?.detection?.model_policy);
+            const policy = verdictPolicyText(displayVerdict, data?.model_policy ?? data?.overall?.model_policy ?? data?.ml?.model_policy ?? data?.detection?.model_policy);
 
             document.getElementById('modelPhishingProbability').textContent = formatConfidenceValue(probability);
             document.getElementById('modelSelectedThreshold').textContent = threshold === undefined || threshold === null || threshold === '' ? 'Not Collected' : formatConfidenceValue(threshold);
             document.getElementById('modelFinalVerdict').textContent = String(finalVerdict).replaceAll('_', ' ').toUpperCase();
             document.getElementById('modelDisplayVerdict').textContent = String(displayVerdict).replaceAll('_', ' ').toUpperCase();
             document.getElementById('modelPolicyText').textContent = policy;
+        }
+
+        function updateActionTitles(audience) {
+            const isAdmin = String(audience || '').toLowerCase() === 'admin';
+            const labels = isAdmin
+                ? ['Containment', 'Eradication & Recovery', 'Post-Incident Recommendations']
+                : ['Recommended Actions', 'Follow-Up', 'Additional Guidance'];
+            ['containmentTitle', 'eradicationTitle', 'postIncidentTitle'].forEach((id, index) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = labels[index];
+            });
+            document.getElementById('containmentTitle')?.classList.toggle('sr-only', !isAdmin);
+        }
+
+        function updateMitreSummary(audience, verdictMode, value) {
+            const card = document.getElementById('mitreSummaryCard');
+            const field = document.getElementById('mitrePrimaryValue');
+            if (card) card.style.display = verdictMode === 'safe' ? 'none' : '';
+            if (field) field.textContent = value || 'Not Applicable';
         }
 
         function formatScanDuration(value) {
@@ -2826,8 +2988,21 @@ try {
                 if (Object.prototype.hasOwnProperty.call(features, key)) {
                     const value = features[key];
                     const normalized = String(value).toLowerCase();
-                    return value === -1 || value === 1 || normalized === 'detected' || normalized === 'yes' || normalized === 'true';
+                    return value === -1 || normalized === 'detected' || normalized === 'yes' || normalized === 'true' || normalized === 'suspicious';
                 }
+            }
+            return false;
+        }
+
+        function longUrlSignal(url, features) {
+            if (String(url || '').length > 75) return true;
+            for (const key of ['LongURL', 'URLURL_Length', 'URL_Length', 'url_length']) {
+                if (!Object.prototype.hasOwnProperty.call(features, key)) continue;
+                const value = features[key];
+                const normalized = String(value).toLowerCase();
+                if (typeof value === 'number') return value > 75 || value < 0;
+                if (/^\d+(\.\d+)?$/.test(normalized)) return Number(normalized) > 75;
+                return ['detected', 'yes', 'true', 'suspicious', 'long'].includes(normalized);
             }
             return false;
         }
@@ -2851,7 +3026,7 @@ try {
 
             if (protocol && protocol !== 'https') badges.push('Non-HTTPS');
             if (tld && suspiciousTlds.includes(tld)) badges.push('Suspicious TLD');
-            if (url.length > 75 || featureSignal(features, ['LongURL', 'URLURL_Length', 'URL_Length', 'url_length'])) badges.push('Long URL');
+            if (longUrlSignal(url, features)) badges.push('Long URL');
             if (brandTerms.some(term => lowerUrl.includes(term))) badges.push('Possible Brand Impersonation');
 
             if (!badges.length) return '<span>Not Collected</span>';
@@ -2880,6 +3055,7 @@ try {
             const status = String(detail.status || detail.final_verdict || '').toUpperCase();
             const displayStatus = String(detail.display_status || detail.display_verdict || status);
             const displayClass = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : String(detail.status || '').toLowerCase();
+            const detailMode = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : (String(detail.status || '').toLowerCase() === 'phishing' ? 'phishing' : 'safe');
             const nistActions = normalizeToList(detail.nist_response).length ? detail.nist_response : detail.incident_response;
             const checkedUrl = displayValue(detail.url);
             const summary = displayValue(detail.llm_summary || detail.incidentSummary);
@@ -2892,6 +3068,7 @@ try {
                     ${scanDetailRow('Safety Status', `<span class="badge ${escapeHtml(displayClass)}">${escapeHtml(displayValue(displayStatus).toUpperCase())}</span>`)}
                     ${scanDetailRow('System Detection', escapeHtml(displayValue(status)))}
                     ${scanDetailRow('Risk Level', escapeHtml(displayValue(detail.risk_level)))}
+                    ${scanDetailRow('User Interaction Status', escapeHtml(displayValue(detail.user_interaction_status)))}
                     ${scanDetailRow('Confidence Score', escapeHtml(formatConfidenceValue(detail.confidence_score ?? detail.confidence)))}
                     ${scanDetailRow('Scan Duration', escapeHtml(formatScanDuration(detail.scan_duration)))}
                     ${scanDetailRow('Detection Engine', escapeHtml(displayValue(detail.detection_engine)))}
@@ -2906,8 +3083,8 @@ try {
                             <pre>${escapeHtml(summary)}</pre>
                         </div>
                     `, true)}
-                    ${scanDetailRow('NIST Recommended Actions', formatActionList(nistActions), true)}
-                    ${scanDetailRow('MITRE ATT&CK Mapping', formatMitreTags(detail.mitre_attack || detail.mitreTags), true)}
+                    ${detailMode === 'safe' ? '' : scanDetailRow(detailMode === 'suspicious' ? 'Cautious Review Actions' : 'NIST Recommended Actions', formatActionList(nistActions), true)}
+                    ${detailMode === 'safe' ? '' : scanDetailRow(detailMode === 'suspicious' ? 'Potentially Related MITRE ATT&CK' : 'MITRE ATT&CK Mapping', formatMitreTags(detail.mitre_attack || detail.mitreTags), true)}
                     ${scanDetailRow('User Advisory', `<pre>${escapeHtml(displayValue(detail.user_advisory || detail.userAdvisory))}</pre>`, true)}
                 </div>
             `;
@@ -2957,9 +3134,10 @@ try {
                 const confidencePercent = Number(detail.confidence_score || 0) * 100;
                 const riskLevel = String(detail.risk_level || mapRiskFromStatus(status));
                 const mitre = Array.isArray(detail.mitre_attack) ? detail.mitre_attack : [];
-                const mitrePrimary = mitre.length
+                const detailMode = String(detail.display_status || '').toLowerCase().includes('suspicious') ? 'suspicious' : (status === 'phishing' ? 'phishing' : 'safe');
+                const mitrePrimary = detailMode === 'safe' ? 'Not Applicable' : (mitre.length
                     ? `${mitre[0].id || ''}${(mitre[0].id && (mitre[0].name || mitre[0].technique)) ? ' - ' : ''}${mitre[0].name || mitre[0].technique || 'Technique'}`
-                    : '-';
+                    : 'Not Applicable');
 
                 const statusBadge = document.getElementById('statusBadge');
                 const detailDisplayStatus = detail.display_status || status;
@@ -2969,6 +3147,8 @@ try {
                 document.getElementById('confidenceScore').textContent = confidencePercent.toFixed(2) + '%';
                 document.getElementById('confidenceFill').style.width = Math.max(0, Math.min(100, confidencePercent)) + '%';
                 document.getElementById('riskLevelValue').textContent = riskLevel.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+                if (document.getElementById('interactionStatusValue')) document.getElementById('interactionStatusValue').textContent = detail.user_interaction_status || 'Not collected';
+                updateActionTitles(detail.report_audience);
                 updateModelDecisionExplanation({
                     phishing_probability: detail.phishing_probability ?? detail.confidence_score,
                     selected_threshold: detail.selected_threshold,
@@ -2976,7 +3156,7 @@ try {
                     display_status: detail.display_status,
                     model_policy: detail.model_policy
                 });
-                document.getElementById('mitrePrimaryValue').textContent = mitrePrimary;
+                updateMitreSummary(detail.report_audience, detailMode, mitrePrimary);
                 document.getElementById('resultUrl').href = detail.url || '#';
                 document.getElementById('resultUrl').textContent = detail.url || '-';
                 document.getElementById('llmSummary').textContent = String(detail.display_status || '').toLowerCase().includes('potentially suspicious')
@@ -2986,13 +3166,13 @@ try {
                 document.getElementById('analyzedTime').textContent = detail.analyzed_at ? new Date(detail.analyzed_at).toLocaleString() : '-';
                 document.getElementById('userAdvisory').textContent = detail.user_advisory || 'No advisory available.';
 
-                renderSimpleListFromSnapshot('containmentList', normalizeToList(detail.incident_response), 'No containment steps provided.');
-                renderSimpleListFromSnapshot('eradicationList', normalizeToList(detail.nist_response), 'No eradication and recovery steps provided.');
-                renderSimpleListFromSnapshot('postIncidentList', [], 'No post-incident recommendations provided.');
+                renderSimpleListFromSnapshot('containmentList', normalizeToList(detail.incident_response), '');
+                renderSimpleListFromSnapshot('eradicationList', normalizeToList(detail.nist_response), '');
+                renderSimpleListFromSnapshot('postIncidentList', normalizeToList(detail.post_incident_recommendations), '');
 
                 const mitreContainer = document.getElementById('mitreTags');
                 mitreContainer.innerHTML = '';
-                mitre.forEach(item => {
+                (detailMode === 'safe' ? [] : mitre).forEach(item => {
                     const span = document.createElement('span');
                     span.className = 'badge';
                     span.style.background = '#e2e8f0';
@@ -3029,7 +3209,7 @@ try {
                     nist_actions: {
                         containment: normalizeToList(detail.incident_response),
                         eradication_recovery: normalizeToList(detail.nist_response),
-                        post_incident: []
+                        post_incident: normalizeToList(detail.post_incident_recommendations)
                     },
                     user_advisory: detail.user_advisory || ''
                 };
@@ -3227,6 +3407,7 @@ try {
             'ShieldURL Help': [
                 'What is ShieldURL?',
                 'How does ShieldURL work?',
+                'What is lexical detection model?',
                 'How accurate is the detection?',
                 'What is phishing?'
             ]
@@ -3511,6 +3692,8 @@ try {
                         .replaceAll('_', ' ')
                         .replace(/\b\w/g, (c) => c.toUpperCase());
                     document.getElementById('riskLevelValue').textContent = displayRisk;
+                    if (document.getElementById('interactionStatusValue')) document.getElementById('interactionStatusValue').textContent = result.user_interaction_status || result.llm_report?.user_interaction_status || 'Not collected';
+                    updateActionTitles(result.report_audience || result.llm_report?.audience);
 
                     const features = result.features || detection.features || {};
                     document.getElementById('analysisDetails').textContent = JSON.stringify(features, null, 2); // Show features for now as "details"
@@ -3552,9 +3735,6 @@ try {
                         container.innerHTML = '';
                         const filledGroups = groups.filter(group => group.items.length > 0);
                         if (!filledGroups.length) {
-                            const li = document.createElement('li');
-                            li.textContent = emptyMessage;
-                            container.appendChild(li);
                             return;
                         }
                         filledGroups.forEach(group => {
@@ -3576,20 +3756,30 @@ try {
                     };
                     const renderSimpleList = (container, items, emptyMessage) => {
                         if (!container) return;
+                        const card = container.closest('.action-card');
                         container.innerHTML = '';
-                        if (!items || !items.length) {
-                            const li = document.createElement('li');
-                            li.textContent = emptyMessage;
-                            container.appendChild(li);
+                        items = dedupeRenderItems(items || []);
+                        if (!items.length) {
+                            if (card) card.style.display = 'none';
                             return;
                         }
+                        if (card) card.style.display = '';
                         items.forEach(item => {
                             const li = document.createElement('li');
                             li.textContent = typeof item === 'string' ? item : JSON.stringify(item);
                             container.appendChild(li);
                         });
                     };
-                    const collectList = (...values) => values.flatMap(value => normalizeList(value));
+                    const dedupeTextItems = (items) => {
+                        const seen = new Set();
+                        return items.filter(item => {
+                            const key = (typeof item === 'string' ? item : JSON.stringify(item)).trim().toLowerCase();
+                            if (!key || seen.has(key)) return false;
+                            seen.add(key);
+                            return true;
+                        });
+                    };
+                    const collectList = (...values) => dedupeTextItems(values.flatMap(value => normalizeList(value)));
                     const formatMitreTag = (tech) => {
                         if (typeof tech === 'string') {
                             return tech;
@@ -3630,11 +3820,12 @@ try {
                         if (verdict.includes('potentially suspicious')) {
                             return 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.';
                         }
-                        return `The submitted URL was classified as ${verdict} with ${risk} risk based on the supplied scan context. The system uses advanced URL detection analysis to identify suspicious website patterns.`;
+                        return `The submitted URL was classified as ${verdict} with ${risk} risk based on the supplied scan context. ${verdictPolicyText(verdict)}`;
                     };
                     const fallbackUserAdvisory = 'Review the URL carefully before interacting with it. Verify the destination before entering login details, OTP, banking information, or personal data.';
 
                     const potentiallySuspiciousDisplay = String(result.display_status || result.overall?.display_verdict || detection.display_verdict || '').toLowerCase().includes('potentially suspicious');
+                    const verdictMode = potentiallySuspiciousDisplay ? 'suspicious' : (String(result.status || detection.final_verdict || '').toLowerCase() === 'phishing' ? 'phishing' : 'safe');
                     const incidentSummary = potentiallySuspiciousDisplay
                         ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
                         : (pickFirst(
@@ -3686,10 +3877,10 @@ try {
                         { title: 'Eradication & Recovery', items: eradicationActions },
                         { title: 'Post-Incident Recommendations', items: postIncidentActions },
                         ...(hasPrimaryActions ? [] : [{ title: 'Incident Response', items: fallbackIncident }])
-                    ], 'No recommended actions available.');
+                    ], '');
                     const shouldShowNist = !hasPrimaryActions && fallbackNist.length > 0;
                     if (shouldShowNist) {
-                        renderGroupedList(nistContainer, nistGroups, 'No response steps available.');
+                        renderGroupedList(nistContainer, nistGroups, '');
                         nistField.style.display = '';
                     } else {
                         nistContainer.innerHTML = '';
@@ -3701,13 +3892,13 @@ try {
                         result.user_advisory
                     ) || fallbackUserAdvisory;
                     document.getElementById('userAdvisory').textContent = userAdvisory;
-                    renderSimpleList(document.getElementById('containmentList'), containmentActions, 'No containment steps provided.');
-                    renderSimpleList(document.getElementById('eradicationList'), eradicationActions, 'No eradication and recovery steps provided.');
-                    renderSimpleList(document.getElementById('postIncidentList'), postIncidentActions, 'No post-incident recommendations provided.');
+                    renderSimpleList(document.getElementById('containmentList'), containmentActions, '');
+                    renderSimpleList(document.getElementById('eradicationList'), eradicationActions, '');
+                    renderSimpleList(document.getElementById('postIncidentList'), postIncidentActions, '');
 
                     const mitreContainer = document.getElementById('mitreTags');
                     mitreContainer.innerHTML = '';
-                    const mitreMapping = dedupeMitreTags(
+                    const mitreMapping = verdictMode === 'safe' ? [] : dedupeMitreTags(
                         collectList(
                             llm.mitre_attack_mapping,
                             result.mitre_attack_mapping,
@@ -3726,7 +3917,7 @@ try {
                             mitreContainer.appendChild(span);
                         });
                     }
-                    document.getElementById('mitrePrimaryValue').textContent = mitreMapping.length ? formatMitreTag(mitreMapping[0]) : '-';
+                    updateMitreSummary(result.report_audience || result.llm_report?.audience, verdictMode, verdictMode === 'safe' ? 'Not Applicable' : (mitreMapping.length ? formatMitreTag(mitreMapping[0]) : 'Not Applicable'));
 
                     // Set Report Link (We assume we can get the ID from result or just reload history... 
                     // Wait, result usually doesn't return the NEW ID unless we add it to analyze.php output.
@@ -3819,11 +4010,11 @@ try {
                                 const generatedContainment = collectList(generated.containment_actions);
                                 const generatedEradication = collectList(generated.eradication_recovery_actions);
                                 const generatedPost = collectList(generated.post_incident_recommendations);
-                                renderSimpleList(document.getElementById('containmentList'), generatedContainment, 'No containment steps provided.');
-                                renderSimpleList(document.getElementById('eradicationList'), generatedEradication, 'No eradication and recovery steps provided.');
-                                renderSimpleList(document.getElementById('postIncidentList'), generatedPost, 'No post-incident recommendations provided.');
+                                renderSimpleList(document.getElementById('containmentList'), generatedContainment, '');
+                                renderSimpleList(document.getElementById('eradicationList'), generatedEradication, '');
+                                renderSimpleList(document.getElementById('postIncidentList'), generatedPost, '');
                                 document.getElementById('userAdvisory').textContent = generated.user_advisory || document.getElementById('userAdvisory').textContent;
-                                const generatedMitre = dedupeMitreTags(collectList(generated.mitre_attack_mapping));
+                                const generatedMitre = verdictMode === 'safe' ? [] : dedupeMitreTags(collectList(generated.mitre_attack_mapping));
                                 mitreContainer.innerHTML = '';
                                 generatedMitre.forEach(tech => {
                                     const span = document.createElement('span');
@@ -3834,7 +4025,7 @@ try {
                                     span.textContent = formatMitreTag(tech);
                                     mitreContainer.appendChild(span);
                                 });
-                                document.getElementById('mitrePrimaryValue').textContent = generatedMitre.length ? formatMitreTag(generatedMitre[0]) : '-';
+                                updateMitreSummary(reportResult.report_audience || generated.audience, verdictMode, verdictMode === 'safe' ? 'Not Applicable' : (generatedMitre.length ? formatMitreTag(generatedMitre[0]) : 'Not Applicable'));
                                 loadHistory();
                             })
                             .catch((error) => console.warn('AI report generation failed:', error));
@@ -4148,13 +4339,39 @@ try {
 
         const changePasswordForm = document.getElementById('changePasswordForm');
         if (changePasswordForm) {
-            changePasswordForm.addEventListener('submit', (event) => {
+            document.querySelectorAll('.password-hold-btn[data-password-target]').forEach((button) => {
+                const input = document.getElementById(button.dataset.passwordTarget);
+                if (!input) return;
+                const reveal = (event) => {
+                    event.preventDefault();
+                    input.type = 'text';
+                    button.classList.add('is-holding');
+                };
+                const hide = () => {
+                    input.type = 'password';
+                    button.classList.remove('is-holding');
+                };
+                button.addEventListener('pointerdown', reveal);
+                button.addEventListener('pointerup', hide);
+                button.addEventListener('pointerleave', hide);
+                button.addEventListener('pointercancel', hide);
+                button.addEventListener('blur', hide);
+                button.addEventListener('keydown', (event) => {
+                    if (event.key === ' ' || event.key === 'Enter') {
+                        reveal(event);
+                    }
+                });
+                button.addEventListener('keyup', hide);
+            });
+
+            changePasswordForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 const currentPassword = document.getElementById('currentPassword').value;
                 const newPassword = document.getElementById('newPassword').value;
                 const confirmPassword = document.getElementById('confirmPassword').value;
                 const passwordError = document.getElementById('passwordError');
                 const passwordInfo = document.getElementById('passwordInfo');
+                const submitButton = changePasswordForm.querySelector('button[type="submit"]');
                 passwordError.style.display = 'none';
                 passwordInfo.textContent = '';
                 if (!currentPassword || !newPassword || !confirmPassword) {
@@ -4172,8 +4389,37 @@ try {
                     passwordError.style.display = 'block';
                     return;
                 }
-                passwordInfo.textContent = 'Password validation passed. Backend update endpoint is required to save this change.';
-                changePasswordForm.reset();
+                try {
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.textContent = 'Updating...';
+                    }
+                    const response = await fetch('api/update_password.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            current_password: currentPassword,
+                            new_password: newPassword,
+                            confirm_password: confirmPassword
+                        })
+                    });
+                    const result = await parseJsonResponse(response);
+                    if (!result.success) {
+                        throw new Error(result.message || 'Password update failed.');
+                    }
+                    changePasswordForm.reset();
+                    passwordInfo.textContent = result.message || 'Your password has been changed successfully.';
+                    window.alert('Your password has been changed successfully.');
+                } catch (error) {
+                    passwordError.textContent = error.message || 'Password update failed.';
+                    passwordError.style.display = 'block';
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Update Password';
+                    }
+                }
             });
         }
 

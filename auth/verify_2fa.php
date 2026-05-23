@@ -17,7 +17,7 @@ $conn = $db->getConnection();
 $message = '';
 $messageType = '';
 
-function redirect_dashboard($role)
+function redirect_verified_dashboard($role)
 {
     if ($role === 'admin') {
         header("Location: ../admin/index.php?transition=1");
@@ -27,29 +27,29 @@ function redirect_dashboard($role)
     exit();
 }
 
-function send_email_code($email, $name, $code)
+function send_login_code($email, $name, $code)
 {
-    $subject = 'Your ShieldURL verification code';
+    $subject = 'Your ShieldURL sign-in code';
     $body = "Hello {$name},\n\n"
-        . "Your ShieldURL MFA verification code is: {$code}\n\n"
+        . "Your ShieldURL sign-in verification code is: {$code}\n\n"
         . "This code expires in 10 minutes. If you did not try to sign in, contact your administrator.\n\n"
         . "ShieldURL";
     return shieldurl_send_mail($email, $subject, $body);
 }
 
-function create_email_code($user)
+function create_login_code($user)
 {
     $code = (string)random_int(100000, 999999);
-    $_SESSION['mfa_email_code_hash'] = password_hash($code, PASSWORD_DEFAULT);
-    $_SESSION['mfa_email_code_expires'] = time() + 600;
-    $_SESSION['mfa_email_code_sent_to'] = $user['email'];
-    $_SESSION['mfa_email_code_sent_at'] = time();
-    return send_email_code($user['email'], $user['full_name'] ?: $user['username'], $code);
+    $_SESSION['mfa_login_code_hash'] = password_hash($code, PASSWORD_DEFAULT);
+    $_SESSION['mfa_login_code_expires'] = time() + 600;
+    $_SESSION['mfa_login_code_sent_to'] = $user['email'];
+    $_SESSION['mfa_login_code_sent_at'] = time();
+    return send_login_code($user['email'], $user['full_name'] ?: $user['username'], $code);
 }
 
 $stmt = $conn->prepare("SELECT id, full_name, username, email, role, force_password_change, mfa_required, mfa_configured FROM users WHERE id=? AND is_active=TRUE LIMIT 1");
 $stmt->execute([$_SESSION['user_id']]);
-$user = $stmt->fetch();
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user) {
     session_destroy();
@@ -57,32 +57,42 @@ if (!$user) {
     exit();
 }
 
+$_SESSION['force_password_change'] = (bool)$user['force_password_change'];
 $_SESSION['mfa_required'] = (bool)$user['mfa_required'];
 $_SESSION['mfa_configured'] = (bool)$user['mfa_configured'];
 
 if (!empty($user['force_password_change'])) {
-    $_SESSION['force_password_change'] = true;
     header("Location: change_password.php?first_login=1");
     exit();
 }
 
-if (empty($user['mfa_required']) || !empty($user['mfa_configured'])) {
-    redirect_dashboard($_SESSION['role'] ?? $user['role']);
+if (empty($user['mfa_required'])) {
+    $_SESSION['mfa_verified'] = true;
+    redirect_verified_dashboard($_SESSION['role'] ?? $user['role']);
+}
+
+if (empty($user['mfa_configured'])) {
+    header("Location: mfa_setup.php");
+    exit();
+}
+
+if (!empty($_SESSION['mfa_verified'])) {
+    redirect_verified_dashboard($_SESSION['role'] ?? $user['role']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'verify';
     if ($action === 'resend') {
-        $sent = create_email_code($user);
+        $sent = create_login_code($user);
         $message = $sent
             ? 'A new verification code was sent to your email.'
             : 'A new code was generated. SMTP email is not configured, so check the PHP error log.';
         $messageType = $sent ? 'success' : 'error';
     } else {
         $code = preg_replace('/\D/', '', $_POST['code'] ?? '');
-        $hash = $_SESSION['mfa_email_code_hash'] ?? '';
-        $expires = (int)($_SESSION['mfa_email_code_expires'] ?? 0);
-        $sentTo = $_SESSION['mfa_email_code_sent_to'] ?? '';
+        $hash = $_SESSION['mfa_login_code_hash'] ?? '';
+        $expires = (int)($_SESSION['mfa_login_code_expires'] ?? 0);
+        $sentTo = $_SESSION['mfa_login_code_sent_to'] ?? '';
 
         if (strlen($code) !== 6) {
             $message = 'Enter the 6-digit code sent to your email.';
@@ -94,20 +104,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = 'Invalid verification code. Check your email and try again.';
             $messageType = 'error';
         } else {
-            $update = $conn->prepare("UPDATE users SET mfa_configured=TRUE WHERE id=?");
-            $update->execute([$_SESSION['user_id']]);
-            $_SESSION['mfa_configured'] = true;
             $_SESSION['mfa_verified'] = true;
-            unset($_SESSION['mfa_email_code_hash'], $_SESSION['mfa_email_code_expires'], $_SESSION['mfa_email_code_sent_to'], $_SESSION['mfa_email_code_sent_at']);
-            redirect_dashboard($_SESSION['role'] ?? $user['role']);
+            unset($_SESSION['mfa_login_code_hash'], $_SESSION['mfa_login_code_expires'], $_SESSION['mfa_login_code_sent_to'], $_SESSION['mfa_login_code_sent_at']);
+            redirect_verified_dashboard($_SESSION['role'] ?? $user['role']);
         }
     }
 } elseif (
-    empty($_SESSION['mfa_email_code_hash'])
-    || ($_SESSION['mfa_email_code_sent_to'] ?? '') !== $user['email']
-    || time() > (int)($_SESSION['mfa_email_code_expires'] ?? 0)
+    empty($_SESSION['mfa_login_code_hash'])
+    || ($_SESSION['mfa_login_code_sent_to'] ?? '') !== $user['email']
+    || time() > (int)($_SESSION['mfa_login_code_expires'] ?? 0)
 ) {
-    $sent = create_email_code($user);
+    $sent = create_login_code($user);
     if (!$sent) {
         $message = 'SMTP email is not configured, so the verification code was written to the PHP error log.';
         $messageType = 'error';
@@ -121,7 +128,7 @@ $maskedEmail = preg_replace('/(^.).*(@.*$)/', '$1***$2', $user['email']);
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email MFA - ShieldURL</title>
+  <title>Sign-in Verification - ShieldURL</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -180,11 +187,8 @@ $maskedEmail = preg_replace('/(^.).*(@.*$)/', '$1***$2', $user['email']);
 <body>
   <div class="auth-wrapper">
     <div class="auth-box">
-      <h1>Email Verification</h1>
-      <p>Enter the 6-digit code sent to <?php echo htmlspecialchars($maskedEmail); ?>. New users must complete this step before accessing the dashboard.</p>
-      <?php if (isset($_GET['password_changed'])): ?>
-        <div class="message success">Password changed successfully. Verify your email to continue.</div>
-      <?php endif; ?>
+      <h1>Sign-in Verification</h1>
+      <p>Enter the 6-digit code sent to <?php echo htmlspecialchars($maskedEmail); ?> to continue to ShieldURL.</p>
       <?php if ($message): ?>
         <div class="message <?php echo htmlspecialchars($messageType); ?>"><?php echo htmlspecialchars($message); ?></div>
       <?php endif; ?>

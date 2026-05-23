@@ -27,10 +27,10 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
-$required = ['full_name','email','role'];
+$required = ['full_name','email','phone','department','role'];
 foreach ($required as $field) {
-    if (empty($input[$field])) {
-        register_json(['success' => false, 'message' => "Field '$field' is required"], 400);
+    if (!isset($input[$field]) || trim((string)$input[$field]) === '') {
+        register_json(['success' => false, 'message' => "Field cannot be empty", 'field' => $field], 400);
     }
 }
 

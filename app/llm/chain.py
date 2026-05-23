@@ -40,37 +40,55 @@ def _normalise_report(report, verdict=""):
     eradication_actions = _drop_placeholder_items(_safe_string_list(report.get("eradication_recovery_actions")))
     post_incident_actions = _drop_placeholder_items(_safe_string_list(report.get("post_incident_recommendations")))
 
-    potentially_suspicious = "potentially suspicious" in str(verdict or "").lower()
-    if potentially_suspicious:
+    verdict_text = str(verdict or "").lower()
+    safe = "safe" in verdict_text or "legitimate" in verdict_text
+    potentially_suspicious = "potentially suspicious" in verdict_text or "suspicious" in verdict_text
+    if safe:
+        containment_actions = []
+        eradication_actions = []
+        post_incident_actions = [
+            "No immediate action is required.",
+            "Continue safe browsing practices.",
+        ]
+    elif potentially_suspicious:
         containment_actions = _drop_strong_blocking_items(containment_actions)
         eradication_actions = _drop_strong_blocking_items(eradication_actions)
         post_incident_actions = _drop_strong_blocking_items(post_incident_actions)
-    default_containment = [
+    default_containment = [] if safe else ([
         "Review the URL carefully before allowing user interaction.",
         "Verify the destination and source before users enter credentials or sensitive information.",
     ] if potentially_suspicious else [
         "Block the URL and domain across DNS filtering, proxy, firewall, and email gateway.",
         "Review proxy, DNS, browser, and email logs to identify affected users.",
-    ]
-    default_recovery = [
+    ])
+    default_recovery = [] if safe else ([
         "Check whether users interacted with the URL if it was shared internally.",
         "Escalate for blocking only if review confirms malicious behavior or organization policy requires it.",
     ] if potentially_suspicious else [
         "Reset credentials immediately if users entered login information.",
         "Enable MFA on affected accounts and review login history.",
-    ]
+    ])
     default_recommendations = [
+        "No immediate action is required.",
+        "Continue safe browsing practices.",
+    ] if safe else ([
         "Document the suspicious indicators and review outcome.",
         "Remind users to verify unexpected links before entering credentials or sensitive information.",
     ] if potentially_suspicious else [
         "Document the incident and preserve relevant scan, email, DNS, proxy, and endpoint evidence.",
         "Conduct phishing awareness training if users were affected.",
-    ]
+    ])
+
+    mitre_mapping = [] if safe else _safe_string_list(report.get("mitre_attack_mapping"))
+    if potentially_suspicious and not mitre_mapping:
+        mitre_mapping = ["Potentially Related: T1566.002 - Spearphishing Link"]
+    if not safe and not potentially_suspicious and not mitre_mapping:
+        mitre_mapping = ["T1566.002 - Spearphishing Link"]
 
     return {
         "incident_summary": str(report.get("incident_summary", "")).strip(),
         "containment_actions": containment_actions or default_containment,
-        "mitre_attack_mapping": _safe_string_list(report.get("mitre_attack_mapping")),
+        "mitre_attack_mapping": mitre_mapping,
         "eradication_recovery_actions": eradication_actions or default_recovery,
         "post_incident_recommendations": post_incident_actions or default_recommendations,
         "user_advisory": str(report.get("user_advisory", "")).strip(),
@@ -164,7 +182,7 @@ def _compact_chat_context(scan_context):
     return {
         "url": scan_context.get("checked_url") or scan_context.get("url") or "",
         "verdict": detection.get("display_verdict") or detection.get("final_verdict") or scan_context.get("final_verdict") or "",
-        "confidence": detection.get("confidence_score") or detection.get("phishing_probability") or scan_context.get("confidence_score") or "",
+        "confidence": detection.get("phishing_probability") or detection.get("confidence_score") or scan_context.get("phishing_probability") or scan_context.get("confidence_score") or "",
         "risk": detection.get("risk_level") or scan_context.get("risk_level") or "",
         "suspicious_indicators": [str(item).strip() for item in indicators if str(item).strip()][:3],
         "mitre_attack": scan_context.get("mitre_attack", [])[:1] if isinstance(scan_context.get("mitre_attack"), list) else [],

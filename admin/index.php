@@ -1,4 +1,8 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
 require_once '../config/db.php';
 
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
@@ -26,6 +30,10 @@ if ($_SESSION['force_password_change']) {
 }
 if ($_SESSION['mfa_required'] && !$_SESSION['mfa_configured']) {
   header("Location: ../auth/mfa_setup.php");
+  exit();
+}
+if ($_SESSION['mfa_required'] && $_SESSION['mfa_configured'] && empty($_SESSION['mfa_verified'])) {
+  header("Location: ../auth/verify_2fa.php");
   exit();
 }
 
@@ -245,6 +253,26 @@ $users_online = $stmt->fetch()['users_online'];
       border-radius: 5px;
       font-size: 1rem;
       font-family: inherit;
+    }
+
+    .form-group input.field-invalid,
+    .form-group select.field-invalid,
+    .form-group textarea.field-invalid {
+      border-color: #dc2626;
+      background: #fff1f2;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+
+    .field-error {
+      display: none;
+      margin-top: 0.4rem;
+      color: #b91c1c;
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .field-error.show {
+      display: block;
     }
 
     .form-row {
@@ -568,8 +596,9 @@ $users_online = $stmt->fetch()['users_online'];
 
     .action-card h4 {
       font-size: 1rem;
+      font-weight: 800;
       margin-bottom: 0.5rem;
-      color: #0b1f3a;
+      color: #000000;
     }
 
     .action-card ul {
@@ -619,10 +648,18 @@ $users_online = $stmt->fetch()['users_online'];
       margin-bottom: 1.5rem;
     }
 
+    .decision-panel {
+      margin-top: 0.9rem;
+      padding: 1rem;
+      border-radius: 12px;
+      background: rgba(100, 116, 139, 0.12);
+      border: 1px solid rgba(100, 116, 139, 0.18);
+    }
+
     .result-field label,
     .dashboard-card label {
-      font-weight: 600;
-      color: #666;
+      font-weight: 800;
+      color: #000000;
       display: block;
       margin-bottom: 0.5rem;
     }
@@ -1078,6 +1115,44 @@ $users_online = $stmt->fetch()['users_online'];
       display: flex;
     }
 
+    .session-timeout-notice {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(8, 21, 39, 0.58);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 12000;
+    }
+
+    .session-timeout-notice.show {
+      display: flex;
+    }
+
+    .session-timeout-card {
+      width: min(390px, 100%);
+      background: #ffffff;
+      border: 1px solid #dbe4ef;
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: 0 24px 70px rgba(8, 21, 39, 0.35);
+    }
+
+    .session-timeout-card h3 {
+      margin: 0 0 0.45rem;
+      color: #0b1f3a;
+      font-size: 1.1rem;
+    }
+
+    .session-timeout-card p {
+      margin: 0 0 1rem;
+      color: #334155;
+      line-height: 1.45;
+    }
+
     .audit-modal-panel {
       width: min(680px, 100%);
       max-height: 82vh;
@@ -1144,6 +1219,26 @@ $users_online = $stmt->fetch()['users_online'];
       text-align: center;
       padding: 3rem;
       color: #999;
+    }
+
+    #clickedUrlModal {
+      border: none;
+      border-radius: 12px;
+      padding: 0;
+      max-width: 460px;
+      width: calc(100% - 32px);
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
+    }
+
+    #clickedUrlModal::backdrop {
+      background: rgba(11, 31, 58, 0.38);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
 
     .delete-btn {
@@ -1747,35 +1842,40 @@ $users_online = $stmt->fetch()['users_online'];
         <div class="dashboard-tab-panel" id="tab-users">
           <div class="card">
             <h2>Register New User</h2>
-            <form id="registerForm">
+            <form id="registerForm" novalidate>
               <div class="form-row">
                 <div class="form-group">
                   <label for="full_name">Full Name *</label>
-                  <input type="text" id="full_name" name="full_name" required>
+                  <input type="text" id="full_name" name="full_name" required data-required-message="Field cannot be empty">
+                  <div class="field-error" data-error-for="full_name"></div>
                 </div>
                 <div class="form-group">
                   <label for="email">Email *</label>
-                  <input type="email" id="email" name="email" required>
+                  <input type="email" id="email" name="email" required data-required-message="Field cannot be empty">
+                  <div class="field-error" data-error-for="email"></div>
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group">
-                  <label for="phone">Phone</label>
-                  <input type="text" id="phone" name="phone">
+                  <label for="phone">Phone *</label>
+                  <input type="text" id="phone" name="phone" required data-required-message="Field cannot be empty">
+                  <div class="field-error" data-error-for="phone"></div>
                 </div>
                 <div class="form-group">
-                  <label for="department">Department</label>
-                  <input type="text" id="department" name="department">
+                  <label for="department">Department *</label>
+                  <input type="text" id="department" name="department" required data-required-message="Field cannot be empty">
+                  <div class="field-error" data-error-for="department"></div>
                 </div>
               </div>
 
               <div class="form-group">
                 <label for="role">Role *</label>
-                <select id="role" name="role" required>
+                <select id="role" name="role" required data-required-message="Field cannot be empty">
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
                 </select>
+                <div class="field-error" data-error-for="role"></div>
               </div>
               <p class="scan-helper">ShieldURL will generate a secure temporary password, email it to the user, and require password change plus email code verification at first login.</p>
 
@@ -1918,6 +2018,14 @@ $users_online = $stmt->fetch()['users_online'];
     </div>
   </div>
 
+  <div id="sessionTimeoutNotice" class="session-timeout-notice" role="alertdialog" aria-modal="true" aria-labelledby="sessionTimeoutTitle">
+    <div class="session-timeout-card">
+      <h3 id="sessionTimeoutTitle">Session expired</h3>
+      <p>Session is timeout, please log in again.</p>
+      <button id="sessionTimeoutOkBtn" class="btn-check" type="button">Okay</button>
+    </div>
+  </div>
+
   <script>
     let currentScanId = null;
     let currentScanContext = null;
@@ -1926,6 +2034,49 @@ $users_online = $stmt->fetch()['users_online'];
     let hasScanResult = false;
     let isScanRunning = false;
     let auditLogCache = {};
+    let adminSessionExpiredShown = false;
+    let adminSessionReplayAction = false;
+
+    function showAdminSessionExpired() {
+      if (adminSessionExpiredShown) return;
+      adminSessionExpiredShown = true;
+      const notice = document.getElementById('sessionTimeoutNotice');
+      if (notice) {
+        notice.classList.add('show');
+      } else {
+        window.alert('Session is timeout, please log in again.');
+        window.location.href = '../auth/login.php?err=session_destroyed';
+      }
+    }
+
+    function looksLikeSessionExpired(response, data) {
+      const message = String((data && (data.message || data.error || data.detail)) || '').toLowerCase();
+      return response.status === 401 ||
+        response.status === 403 ||
+        (data && data.valid === false) ||
+        message.includes('unauthorized') ||
+        message.includes('not authenticated') ||
+        message.includes('session');
+    }
+
+    async function ensureAdminSession() {
+      if (adminSessionExpiredShown) return false;
+      try {
+        const response = await fetch('../api/check_session.php', {
+          cache: 'no-store',
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.valid) {
+          showAdminSessionExpired();
+          return false;
+        }
+        return true;
+      } catch (error) {
+        showAdminSessionExpired();
+        return false;
+      }
+    }
 
     async function parseJsonResponse(response) {
       const text = await response.text();
@@ -1937,11 +2088,49 @@ $users_online = $stmt->fetch()['users_online'];
           throw new Error('Backend did not return valid JSON: ' + text);
         }
       }
+      if (looksLikeSessionExpired(response, data)) {
+        showAdminSessionExpired();
+        throw new Error('Session is timeout, please log in again.');
+      }
       if (!response.ok) {
         throw new Error((data && (data.error || data.detail || data.message)) || ('Request failed with status ' + response.status));
       }
       return data;
     }
+
+    document.addEventListener('click', (event) => {
+      const target = event.target.closest('button, a, input[type="submit"]');
+      if (!target || target.closest('#sessionTimeoutNotice') || adminSessionReplayAction) return;
+      event.preventDefault();
+      event.stopPropagation();
+      ensureAdminSession().then((valid) => {
+        if (!valid) return;
+        adminSessionReplayAction = true;
+        target.click();
+        adminSessionReplayAction = false;
+      });
+    }, true);
+
+    document.addEventListener('submit', (event) => {
+      const form = event.target.closest('form');
+      if (!form || adminSessionReplayAction) return;
+      event.preventDefault();
+      event.stopPropagation();
+      ensureAdminSession().then((valid) => {
+        if (!valid) return;
+        adminSessionReplayAction = true;
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.submit();
+        }
+        adminSessionReplayAction = false;
+      });
+    }, true);
+
+    document.getElementById('sessionTimeoutOkBtn')?.addEventListener('click', () => {
+      window.location.href = '../auth/login.php?err=session_destroyed';
+    });
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -1970,7 +2159,13 @@ $users_online = $stmt->fetch()['users_online'];
     }
 
     function collectList(...values) {
-      return values.flatMap(normalizeToList);
+      const seen = new Set();
+      return values.flatMap(normalizeToList).filter(item => {
+        const key = (typeof item === 'string' ? item : JSON.stringify(item)).trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     }
 
     function formatProbabilityValue(value) {
@@ -1983,9 +2178,20 @@ $users_online = $stmt->fetch()['users_online'];
     function simplePolicyText(value) {
       const text = String(value || '').trim();
       if (!text || /lexical model|false negatives|threshold|recall/i.test(text)) {
-        return 'The system uses advanced URL detection analysis to identify suspicious website patterns.';
+        return 'No major phishing indicators were identified during analysis.';
       }
       return text;
+    }
+
+    function verdictPolicyText(displayVerdict, fallback) {
+      const verdict = String(displayVerdict || '').toLowerCase();
+      if (verdict.includes('phishing') && !verdict.includes('suspicious')) {
+        return 'Phishing was detected by the URL model; confidence and risk level determine response severity.';
+      }
+      if (verdict.includes('suspicious')) {
+        return 'Several suspicious URL characteristics were identified during analysis.';
+      }
+      return simplePolicyText(fallback || 'No major phishing indicators were identified during analysis.');
     }
 
     function updateModelDecisionExplanation(data) {
@@ -1993,7 +2199,7 @@ $users_online = $stmt->fetch()['users_online'];
       const threshold = data?.selected_threshold ?? data?.ml?.selected_threshold ?? data?.detection?.lexical_threshold;
       const finalVerdict = data?.status ?? data?.detection?.final_verdict ?? data?.overall?.status ?? 'unknown';
       const displayVerdict = data?.display_status ?? data?.overall?.display_verdict ?? data?.detection?.display_verdict ?? finalVerdict;
-      const policy = simplePolicyText(data?.model_policy ?? data?.overall?.model_policy ?? data?.ml?.model_policy ?? data?.detection?.model_policy);
+      const policy = verdictPolicyText(displayVerdict, data?.model_policy ?? data?.overall?.model_policy ?? data?.ml?.model_policy ?? data?.detection?.model_policy);
 
       document.getElementById('modelPhishingProbability').textContent = formatProbabilityValue(probability);
       document.getElementById('modelSelectedThreshold').textContent = threshold === undefined || threshold === null || threshold === '' ? 'Not Collected' : formatProbabilityValue(threshold);
@@ -2002,16 +2208,36 @@ $users_online = $stmt->fetch()['users_online'];
       document.getElementById('modelPolicyText').textContent = policy;
     }
 
+    function updateActionTitles(audience) {
+      const isAdmin = String(audience || '').toLowerCase() === 'admin';
+      const labels = isAdmin
+        ? ['Containment', 'Eradication & Recovery', 'Post-Incident Recommendations']
+        : ['Recommended Actions', 'Follow-Up', 'Additional Guidance'];
+      ['containmentTitle', 'eradicationTitle', 'postIncidentTitle'].forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = labels[index];
+      });
+      document.getElementById('containmentTitle')?.classList.toggle('sr-only', !isAdmin);
+    }
+
+    function updateMitreSummary(audience, verdictMode, value) {
+      const card = document.getElementById('mitreSummaryCard');
+      const field = document.getElementById('mitrePrimaryValue');
+      if (card) card.style.display = verdictMode === 'safe' ? 'none' : '';
+      if (field) field.textContent = value || 'Not Applicable';
+    }
+
     function renderSimpleList(containerId, items, emptyMessage) {
       const container = document.getElementById(containerId);
       if (!container) return;
+      const card = container.closest('.action-card');
       container.innerHTML = '';
+      items = collectList(items || []);
       if (!items || !items.length) {
-        const li = document.createElement('li');
-        li.textContent = emptyMessage;
-        container.appendChild(li);
+        if (card) card.style.display = 'none';
         return;
       }
+      if (card) card.style.display = '';
       items.forEach(item => {
         const li = document.createElement('li');
         li.textContent = typeof item === 'string' ? item : JSON.stringify(item);
@@ -2252,6 +2478,7 @@ $users_online = $stmt->fetch()['users_online'];
       'ShieldURL Help': [
         'What is ShieldURL?',
         'How does ShieldURL work?',
+        'What is lexical detection model?',
         'How accurate is the detection?',
         'What is phishing?'
       ]
@@ -2452,6 +2679,8 @@ $users_online = $stmt->fetch()['users_online'];
         const status = String(result.status || detection.final_verdict || result.overall?.status || 'safe').toLowerCase();
         const riskLevel = String(result.risk_level || detection.risk_level || result.overall?.risk_level || mapRiskFromStatus(status));
         document.getElementById('riskLevelValue').textContent = riskLevel.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+        if (document.getElementById('interactionStatusValue')) document.getElementById('interactionStatusValue').textContent = result.user_interaction_status || result.llm_report?.user_interaction_status || 'Not collected';
+        updateActionTitles(result.report_audience || result.llm_report?.audience || 'admin');
 
         const features = result.features || detection.features || {};
         document.getElementById('analysisDetails').textContent = JSON.stringify(features, null, 2);
@@ -2463,21 +2692,22 @@ $users_online = $stmt->fetch()['users_online'];
         const llm = Object.keys(llmReport).length ? llmReport : (Object.keys(llmBridge).length ? llmBridge : llmResponse);
 
         const displayStatusText = result.display_status || result.overall?.display_verdict || detection.display_verdict || status;
+        const verdictMode = String(displayStatusText).toLowerCase().includes('suspicious') ? 'suspicious' : (String(status).toLowerCase() === 'phishing' ? 'phishing' : 'safe');
         const incidentSummary = String(displayStatusText).toLowerCase().includes('potentially suspicious')
           ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
-          : (llm.incident_summary || llm.executive_summary || result.llm_summary || `The submitted URL was classified as ${displayStatusText} with ${riskLevel.toLowerCase()} risk based on the scan result. The system uses advanced URL detection analysis to identify suspicious website patterns.`);
+          : (llm.incident_summary || llm.executive_summary || result.llm_summary || `The submitted URL was classified as ${displayStatusText} with ${riskLevel.toLowerCase()} risk based on the scan result. ${verdictPolicyText(displayStatusText)}`);
         document.getElementById('llmSummary').textContent = incidentSummary;
 
         const containmentActions = collectList(llm.containment_actions, result.containment_actions);
         const eradicationActions = collectList(llm.eradication_recovery_actions, result.eradication_recovery_actions);
         const postIncidentActions = collectList(llm.post_incident_recommendations, result.post_incident_recommendations);
         const fallbackIncident = collectList(llm.incident_response, result.incident_response);
-        renderSimpleList('containmentList', containmentActions.length ? containmentActions : fallbackIncident, 'No containment steps provided.');
-        renderSimpleList('eradicationList', eradicationActions, 'No eradication and recovery steps provided.');
-        renderSimpleList('postIncidentList', postIncidentActions, 'No post-incident recommendations provided.');
+        renderSimpleList('containmentList', containmentActions.length ? containmentActions : fallbackIncident, '');
+        renderSimpleList('eradicationList', eradicationActions, '');
+        renderSimpleList('postIncidentList', postIncidentActions, '');
         document.getElementById('userAdvisory').textContent = llm.user_advisory || result.user_advisory || 'Review the URL carefully before interacting with it. Verify the destination before entering login details, OTP, banking information, or personal data.';
 
-        const mitreMapping = collectList(llm.mitre_attack_mapping, result.mitre_attack_mapping, llm.mitre_techniques, result.mitre_techniques);
+        const mitreMapping = verdictMode === 'safe' ? [] : collectList(llm.mitre_attack_mapping, result.mitre_attack_mapping, llm.mitre_techniques, result.mitre_techniques);
         const mitreContainer = document.getElementById('mitreTags');
         mitreContainer.innerHTML = '';
         mitreMapping.forEach(tech => {
@@ -2488,7 +2718,7 @@ $users_online = $stmt->fetch()['users_online'];
           span.textContent = formatMitreTag(tech);
           mitreContainer.appendChild(span);
         });
-        document.getElementById('mitrePrimaryValue').textContent = mitreMapping.length ? formatMitreTag(mitreMapping[0]) : '-';
+        updateMitreSummary(result.report_audience || result.llm_report?.audience || 'admin', verdictMode, verdictMode === 'safe' ? 'Not Applicable' : (mitreMapping.length ? formatMitreTag(mitreMapping[0]) : 'Not Applicable'));
 
         const downloadBtn = document.getElementById('downloadReportBtn');
         const downloadLabel = document.getElementById('downloadReportLabel');
@@ -2548,9 +2778,9 @@ $users_online = $stmt->fetch()['users_online'];
               document.getElementById('llmSummary').textContent = String(displayStatusText).toLowerCase().includes('potentially suspicious')
                 ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
                 : (generated.incident_summary || 'AI report is ready.');
-              renderSimpleList('containmentList', collectList(generated.containment_actions), 'No containment steps provided.');
-              renderSimpleList('eradicationList', collectList(generated.eradication_recovery_actions), 'No eradication and recovery steps provided.');
-              renderSimpleList('postIncidentList', collectList(generated.post_incident_recommendations), 'No post-incident recommendations provided.');
+              renderSimpleList('containmentList', collectList(generated.containment_actions), '');
+              renderSimpleList('eradicationList', collectList(generated.eradication_recovery_actions), '');
+              renderSimpleList('postIncidentList', collectList(generated.post_incident_recommendations), '');
               document.getElementById('userAdvisory').textContent = generated.user_advisory || document.getElementById('userAdvisory').textContent;
               loadHistory();
             })
@@ -2566,12 +2796,56 @@ $users_online = $stmt->fetch()['users_online'];
       }
     });
 
+    function clearRegisterFieldError(field) {
+      field.classList.remove('field-invalid');
+      const error = document.querySelector(`[data-error-for="${field.name}"]`);
+      if (error) {
+        error.textContent = '';
+        error.classList.remove('show');
+      }
+    }
+
+    function showRegisterFieldError(field, message = 'Field cannot be empty') {
+      field.classList.add('field-invalid');
+      const error = document.querySelector(`[data-error-for="${field.name}"]`);
+      if (error) {
+        error.textContent = message;
+        error.classList.add('show');
+      }
+    }
+
+    function validateRegisterForm(form) {
+      let valid = true;
+      const requiredFields = Array.from(form.querySelectorAll('[required]'));
+      requiredFields.forEach(field => {
+        clearRegisterFieldError(field);
+        if (!String(field.value || '').trim()) {
+          showRegisterFieldError(field, field.dataset.requiredMessage || 'Field cannot be empty');
+          valid = false;
+        }
+      });
+      return valid;
+    }
+
+    document.querySelectorAll('#registerForm [required]').forEach(field => {
+      field.addEventListener('input', () => clearRegisterFieldError(field));
+      field.addEventListener('change', () => clearRegisterFieldError(field));
+    });
+
     document.getElementById('registerForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
       const formData = new FormData(form);
       const data = Object.fromEntries(formData);
       const resultDiv = document.getElementById('registerResult');
+      resultDiv.className = 'result-message';
+      resultDiv.textContent = '';
+
+      if (!validateRegisterForm(form)) {
+        const firstInvalid = form.querySelector('.field-invalid');
+        if (firstInvalid) firstInvalid.focus();
+        return;
+      }
 
       try {
         const response = await fetch('../api/register_user.php', {
@@ -2584,11 +2858,20 @@ $users_online = $stmt->fetch()['users_online'];
         if (result.success) {
           resultDiv.className = 'result-message success';
           resultDiv.textContent = result.message || 'User registered successfully';
+          window.alert('You has successfully created the account.');
           form.reset();
+          form.querySelectorAll('[required]').forEach(clearRegisterFieldError);
           setTimeout(loadUsers, 500);
         } else {
           resultDiv.className = 'result-message error';
           resultDiv.textContent = result.message || 'Unable to register user.';
+          if (result.field) {
+            const field = form.elements[result.field];
+            if (field) {
+              showRegisterFieldError(field, result.message || 'Field cannot be empty');
+              field.focus();
+            }
+          }
         }
       } catch (error) {
         resultDiv.className = 'result-message error';
@@ -2738,8 +3021,21 @@ $users_online = $stmt->fetch()['users_online'];
         if (Object.prototype.hasOwnProperty.call(features, key)) {
           const value = features[key];
           const normalized = String(value).toLowerCase();
-          return value === -1 || value === 1 || normalized === 'detected' || normalized === 'yes' || normalized === 'true';
+          return value === -1 || normalized === 'detected' || normalized === 'yes' || normalized === 'true' || normalized === 'suspicious';
         }
+      }
+      return false;
+    }
+
+    function scanLongUrlSignal(url, features) {
+      if (String(url || '').length > 75) return true;
+      for (const key of ['LongURL', 'URLURL_Length', 'URL_Length', 'url_length']) {
+        if (!Object.prototype.hasOwnProperty.call(features, key)) continue;
+        const value = features[key];
+        const normalized = String(value).toLowerCase();
+        if (typeof value === 'number') return value > 75 || value < 0;
+        if (/^\d+(\.\d+)?$/.test(normalized)) return Number(normalized) > 75;
+        return ['detected', 'yes', 'true', 'suspicious', 'long'].includes(normalized);
       }
       return false;
     }
@@ -2764,7 +3060,7 @@ $users_online = $stmt->fetch()['users_online'];
 
       if (protocol && protocol !== 'https') badges.push('Non-HTTPS');
       if (tld && suspiciousTlds.includes(tld)) badges.push('Suspicious TLD');
-      if (url.length > 75 || scanFeatureSignal(features, ['LongURL', 'URLURL_Length', 'URL_Length', 'url_length'])) badges.push('Long URL');
+      if (scanLongUrlSignal(url, features)) badges.push('Long URL');
       if (brandTerms.some(term => lowerUrl.includes(term))) badges.push('Possible Brand Impersonation');
 
       if (!badges.length) return '<span>Not Collected</span>';
@@ -2816,6 +3112,7 @@ $users_online = $stmt->fetch()['users_online'];
       const status = String(detail.status || '').toUpperCase();
       const displayStatus = String(detail.display_status || detail.display_verdict || status);
       const displayClass = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : String(detail.status || '').toLowerCase();
+      const detailMode = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : (String(detail.status || '').toLowerCase() === 'phishing' ? 'phishing' : 'safe');
       const checkedUrl = displayScanValue(detail.url);
       const nistActions = normalizeScanList(detail.nist_response).length ? detail.nist_response : detail.incident_response;
       const summary = String(detail.display_status || '').toLowerCase().includes('potentially suspicious')
@@ -2830,6 +3127,7 @@ $users_online = $stmt->fetch()['users_online'];
         ${auditModalRow('Safety Status', `<span class="badge ${escapeHtml(displayClass)}">${escapeHtml(displayScanValue(displayStatus).toUpperCase())}</span>`, true)}
         ${auditModalRow('System Detection', displayScanValue(status))}
         ${auditModalRow('Risk Level', displayScanValue(detail.risk_level))}
+        ${auditModalRow('User Interaction Status', displayScanValue(detail.user_interaction_status))}
         ${auditModalRow('Confidence Score', formatScanConfidence(detail.confidence_score))}
         ${auditModalRow('Scan Duration', formatScanDurationValue(detail.scan_duration))}
         ${auditModalRow('Detection Engine', displayScanValue(detail.detection_engine))}
@@ -2842,8 +3140,8 @@ $users_online = $stmt->fetch()['users_online'];
           <strong style="display:block; color:#0f172a; margin-bottom:0.35rem;">Detailed Summary</strong>
           <pre>${escapeHtml(summary)}</pre>
         `, true)}
-        ${auditModalRow('NIST Actions', formatScanList(nistActions), true)}
-        ${auditModalRow('MITRE ATT&CK', formatScanMitre(detail.mitre_attack), true)}
+        ${detailMode === 'safe' ? '' : auditModalRow(detailMode === 'suspicious' ? 'Cautious Review Actions' : 'NIST Actions', formatScanList(nistActions), true)}
+        ${detailMode === 'safe' ? '' : auditModalRow(detailMode === 'suspicious' ? 'Potentially Related MITRE ATT&CK' : 'MITRE ATT&CK', formatScanMitre(detail.mitre_attack), true)}
         ${auditModalRow('User Advisory', `<pre>${escapeHtml(displayScanValue(detail.user_advisory))}</pre>`, true)}
       `;
       modal.classList.add('show');

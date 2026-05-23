@@ -10,6 +10,10 @@ if (isset($_SESSION['user_id'])) {
     header("Location: mfa_setup.php");
     exit();
   }
+  if (!empty($_SESSION['mfa_required']) && !empty($_SESSION['mfa_configured']) && empty($_SESSION['mfa_verified'])) {
+    header("Location: verify_2fa.php");
+    exit();
+  }
   if ($_SESSION['role'] === 'admin') {
     header("Location: ../admin/index.php");
   } else {
@@ -381,8 +385,8 @@ if (isset($_SESSION['user_id'])) {
 
       <form method="POST" action="login_process.php" id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
-          <label for="username">Username</label>
-          <input type="text" id="username" name="username" placeholder="Enter your username" required
+          <label for="username">Username/Email</label>
+          <input type="text" id="username" name="username" placeholder="Enter your username or email" required
             autocomplete="username">
         </div>
 

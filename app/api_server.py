@@ -297,7 +297,7 @@ SCAN_TERM_EXPLANATIONS = {
     ),
     "safety status": (
         "Safety Status is the final user-facing wording shown to the user.",
-        "It may soften uncertain cases, such as showing potentially suspicious instead of confirmed phishing.",
+        "It keeps model phishing as phishing and uses risk/confidence to show severity.",
     ),
     "incident summary": (
         "Incident Summary explains the likely security concern in plain language.",
@@ -463,7 +463,9 @@ def _format_confidence(confidence) -> str:
 
 
 def _display_verdict(status: str, confidence: float) -> str:
-    if status.lower() == "phishing" and confidence < 0.70:
+    if status.lower() == "phishing":
+        return "Phishing"
+    if status.lower() == "suspicious":
         return "Potentially Suspicious"
     return status.replace("_", " ").title()
 
@@ -494,6 +496,124 @@ def _chat_sections(*sections: tuple[str, str]) -> str:
 
 def _indicator_text(indicators: list[str], fallback: str = "No specific indicators were listed in the scan context.") -> str:
     return ", ".join(indicators[:3]) if indicators else fallback
+
+
+def _scan_features(scan_context: dict) -> dict:
+    if not isinstance(scan_context, dict):
+        return {}
+    for key in ("extracted_features", "features"):
+        value = scan_context.get(key)
+        if isinstance(value, dict):
+            return value
+    detection = scan_context.get("detection")
+    if isinstance(detection, dict) and isinstance(detection.get("features"), dict):
+        return detection["features"]
+    return {}
+
+
+def _feature_number(features: dict, *keys: str, default: float = 0.0) -> float:
+    for key in keys:
+        if key not in features:
+            continue
+        value = features.get(key)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return default
+
+
+def _feature_flag(features: dict, *keys: str) -> bool:
+    for key in keys:
+        if key not in features:
+            continue
+        value = features.get(key)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value == -1 or value > 0
+        normalized = str(value).strip().lower()
+        if normalized in {"detected", "yes", "true", "suspicious", "long"}:
+            return True
+        try:
+            return float(normalized) > 0
+        except (TypeError, ValueError):
+            return False
+    return False
+
+
+def _technical_indicator_phrases(scan_context: dict) -> list[str]:
+    features = _scan_features(scan_context)
+    phrases = []
+
+    if not features:
+        return phrases
+
+    suspicious_keywords = _feature_number(features, "suspicious_keyword_count", "phish_hints")
+    brand_keywords = _feature_number(features, "brand_keyword_count")
+    if suspicious_keywords > 0 or brand_keywords > 0:
+        phrases.append("suspicious login, account, brand, or verification keywords in the URL")
+
+    if _feature_flag(features, "has_suspicious_tld", "suspicious_tld"):
+        phrases.append("a risky or uncommon top-level domain")
+
+    subdomain_count = _feature_number(features, "subdomain_count", "number_of_subdomains", "nb_subdomains")
+    if subdomain_count >= 2 or features.get("SubDomains") == -1:
+        phrases.append("excessive subdomains that can hide the real destination")
+
+    if (
+        features.get("LongURL") == -1
+        or features.get("Redirecting//") == -1
+        or features.get("PrefixSuffix-") == -1
+        or features.get("Symbol@") == -1
+        or _feature_number(features, "url_length", "URLURL_Length", "URL_Length") > 75
+        or _feature_number(features, "hyphen_count", "nb_hyphens") >= 2
+        or _feature_number(features, "query_param_count") >= 2
+    ):
+        phrases.append("abnormal URL structure such as unusual length, redirects, symbols, hyphens, or query parameters")
+
+    entropy = _feature_number(features, "entropy")
+    if entropy >= 4.0:
+        phrases.append("high-entropy text that looks randomly generated or obfuscated")
+
+    if _feature_flag(features, "uses_ip_address", "UsingIP", "ip"):
+        phrases.append("an IP-based domain instead of a normal recognizable hostname")
+
+    if _feature_flag(features, "uses_url_shortener", "ShortURL", "shortening_service"):
+        phrases.append("URL shortener usage that can conceal the final destination")
+
+    return phrases
+
+
+def _observed_behavior_text(scan_context: dict, indicators: list[str]) -> str:
+    technical_phrases = _technical_indicator_phrases(scan_context)
+    heuristic_reasons = []
+    detection = scan_context.get("detection") if isinstance(scan_context, dict) else {}
+    heuristics = scan_context.get("heuristics") if isinstance(scan_context, dict) else {}
+    for source in (
+        scan_context.get("suspicious_indicators") if isinstance(scan_context, dict) else [],
+        detection.get("heuristic_reasons") if isinstance(detection, dict) else [],
+        heuristics.get("reasons") if isinstance(heuristics, dict) else [],
+        indicators,
+    ):
+        if isinstance(source, list):
+            heuristic_reasons.extend(str(item).strip() for item in source if str(item).strip())
+
+    combined = []
+    seen = set()
+    for item in technical_phrases + heuristic_reasons:
+        key = item.lower()
+        if key and key not in seen:
+            seen.add(key)
+            combined.append(item)
+
+    if combined:
+        return "The URL exhibited phishing-related patterns including " + ", ".join(combined[:5]) + "."
+
+    return (
+        "The URL exhibited phishing-related patterns including suspicious keywords, "
+        "uncommon domain structure, and elevated phishing probability from the lexical detection model."
+    )
 
 
 def _is_potentially_suspicious_context(scan_context: dict) -> bool:
@@ -634,6 +754,19 @@ def _confidence_explanation(scan_context: dict) -> str:
 
 def _mitre_explanation(scan_context: dict) -> str:
     verdict, confidence, risk, _ = _context_parts(scan_context)
+    mode = _scan_mode(scan_context)
+    if mode == "safe":
+        return _chat_sections(
+            ("Mapping", "No MITRE ATT&CK technique is mapped for this SAFE scan."),
+            ("Reason", f"The current result is {verdict}, {risk} risk, {confidence} confidence."),
+            ("Action", "No incident-response mapping is required; continue normal safe browsing practices.")
+        )
+    if mode == "suspicious":
+        return _chat_sections(
+            ("Mapping", "Any MITRE reference is potentially related only, not confirmed."),
+            ("Meaning", "Suspicious link behavior can resemble spearphishing links, but this scan does not confirm phishing."),
+            ("Current scan", f"The current result is {verdict}, {risk} risk, {confidence} confidence.")
+        )
     return _chat_sections(
         ("Technique", "T1566.002 is MITRE ATT&CK's Spearphishing Link technique."),
         ("Meaning", "It describes links used to lure users to malicious, deceptive, or credential-harvesting pages."),
@@ -777,6 +910,13 @@ def _safe_reason_answer(scan_context: dict) -> str:
 
 def _mitre_tag_meaning_answer(scan_context: dict) -> str:
     verdict, confidence, risk, _ = _context_parts(scan_context)
+    mode = _scan_mode(scan_context)
+    if mode == "safe":
+        return _chat_sections(
+            ("Explanation", "MITRE ATT&CK tags are not shown for this SAFE scan."),
+            ("Current scan", f"The result is {verdict}, {risk} risk, {confidence} confidence."),
+            ("Action", "No MITRE-based incident response is required.")
+        )
     return _chat_sections(
         ("Explanation", "MITRE ATT&CK tags are standardized labels for attacker techniques and behaviors."),
         ("Why ShieldURL shows them", "They help analysts understand what kind of threat pattern the URL resembles."),
@@ -786,6 +926,19 @@ def _mitre_tag_meaning_answer(scan_context: dict) -> str:
 
 def _t1566_answer(scan_context: dict) -> str:
     verdict, confidence, risk, _ = _context_parts(scan_context)
+    mode = _scan_mode(scan_context)
+    if mode == "safe":
+        return _chat_sections(
+            ("Technique", "T1566.002 is not mapped for this SAFE scan."),
+            ("Current result", f"This scan is {verdict}, {risk} risk, with {confidence} confidence."),
+            ("Action", "No phishing incident response is required from this scan alone.")
+        )
+    if mode == "suspicious":
+        return _chat_sections(
+            ("Technique", "T1566.002 means Spearphishing Link."),
+            ("Current result", "For this suspicious scan, it should be treated as potentially related only, not confirmed."),
+            ("Action", "Verify the destination before entering credentials or sensitive information.")
+        )
     return _chat_sections(
         ("Technique", "T1566.002 means Spearphishing Link."),
         ("How it works", "Attackers use links to bring users to deceptive pages, fake login portals, or credential-harvesting sites."),
@@ -795,6 +948,13 @@ def _t1566_answer(scan_context: dict) -> str:
 
 def _phishing_relation_answer(scan_context: dict) -> str:
     verdict, confidence, risk, indicators = _context_parts(scan_context)
+    mode = _scan_mode(scan_context)
+    if mode == "safe":
+        return _chat_sections(
+            ("Connection", "This SAFE scan does not confirm phishing behavior."),
+            ("Current result", f"The result is {verdict}, {risk} risk, {confidence} confidence."),
+            ("Reminder", "Still verify unexpected links before entering sensitive information.")
+        )
     signal_text = _indicator_text(indicators, "URL-based behavior can still resemble phishing even when detailed indicators are limited.")
     return _chat_sections(
         ("Connection", "Phishing often depends on deceptive links that push users toward fake pages or login prompts."),
@@ -805,6 +965,19 @@ def _phishing_relation_answer(scan_context: dict) -> str:
 
 def _technique_selected_answer(scan_context: dict) -> str:
     verdict, confidence, risk, _ = _context_parts(scan_context)
+    mode = _scan_mode(scan_context)
+    if mode == "safe":
+        return _chat_sections(
+            ("Selection reason", "No attack technique was selected for this SAFE scan."),
+            ("Review context", f"The result is {verdict}, {risk} risk, {confidence} confidence."),
+            ("Action", "Continue normal safe browsing practices.")
+        )
+    if mode == "suspicious":
+        return _chat_sections(
+            ("Selection reason", "Any technique is potentially related only because the URL is suspicious, not confirmed phishing."),
+            ("Important note", "Use it as review context, not proof of an attack."),
+            ("Review context", f"The result is {verdict}, {risk} risk, {confidence} confidence.")
+        )
     return _chat_sections(
         ("Selection reason", "The technique was selected because the scan involves URL-based phishing behavior."),
         ("Important note", "This mapping classifies observed behavior; it does not prove that an account or device was compromised."),
@@ -858,13 +1031,10 @@ def _credential_safety_answer(scan_context: dict) -> str:
 
 def _attack_behavior_answer(scan_context: dict) -> str:
     verdict, confidence, risk, indicators = _context_parts(scan_context)
-    if indicators:
-        behavior = ", ".join(indicators[:4])
-    else:
-        behavior = "No detailed indicators were provided, but the verdict and confidence still suggest phishing-like URL behavior."
+    behavior = _observed_behavior_text(scan_context, indicators)
     return _chat_sections(
         ("Observed behavior", behavior),
-        ("Interpretation", "The behavior is evaluated as URL-based deception or suspicious link activity."),
+        ("Interpretation", "These lexical and structural signals are evaluated as URL-based deception or suspicious link activity."),
         ("Scan result", f"Verdict is {verdict}, {risk} risk, with {confidence} confidence.")
     )
 
@@ -1097,6 +1267,13 @@ def _predefined_question_answer(question: str, scan_context: dict) -> str:
     if normalized == "how accurate is the detection?":
         return _chat_sections(("Accuracy", "Detection accuracy depends on the URL signals available at scan time."), ("Current scan", f"This scan shows {verdict}, {risk} risk, {confidence} confidence."), ("Best use", "Use the result with user context and IT/security review for important decisions."))
 
+    if normalized == "what is lexical detection model?":
+        return _chat_sections(
+            ("Meaning", "The lexical detection model is ShieldURL's URL-pattern classifier."),
+            ("What it checks", "It analyzes text and structure in the URL, such as keywords, length, subdomains, TLD, entropy, IP usage, and shorteners."),
+            ("Limit", "It does not prove a page was visited or compromised; it estimates phishing risk from the URL signals available at scan time.")
+        )
+
     if normalized == "what does this mitre tag mean?":
         return _mitre_tag_meaning_answer(scan_context)
 
@@ -1229,9 +1406,14 @@ def scan(req: ScanRequest):
         ml_status = "PHISHING" if final_status == "phishing" else "LEGITIMATE"
         risk_level = str(detection.get("risk_level", "low")).upper()
         heuristic_reasons = detection.get("heuristic_reasons", [])
+        default_policy = (
+            "Phishing was detected by the URL model; confidence and risk level determine response severity."
+            if final_status == "phishing" else
+            ("Several suspicious URL characteristics were identified during analysis." if final_status == "suspicious" else "No major phishing indicators were identified during analysis.")
+        )
         model_policy = str(
             detection.get("model_policy")
-            or "The system uses advanced URL detection analysis to identify suspicious website patterns."
+            or default_policy
         )
 
         return _json_response({

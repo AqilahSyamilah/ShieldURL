@@ -37,9 +37,11 @@ def _phishing_probability(model, df) -> float:
 
 
 def _display_verdict(status: str, confidence: float) -> str:
-    if status == "phishing" and confidence < 0.70:
+    if status == "phishing":
+        return "Phishing"
+    if status == "suspicious":
         return "Potentially Suspicious"
-    return status
+    return "Safe"
 
 
 def _build_ir_llm_report(url: str, verdict: str, confidence: float, risk: str) -> dict[str, Any]:
@@ -134,27 +136,52 @@ def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = Fal
                 status = "safe"
                 confidence = 0.90
 
-        # Apply a few extra URL checks after the model result.
+        model_status = status
+
+        # Apply a few extra URL checks after the model result. These heuristics
+        # can only create a suspicious review state when the ML model is below
+        # the phishing threshold; they do not downgrade model phishing results.
         heuristic_reasons = []
 
         risky_tlds = ['.ru', '.cn', '.xyz', '.top', '.work', '.info', '.tk', '.ml', '.ga', '.cf', '.gq']
         domain = get_domain(url)
+        lower_url = url.lower()
 
         if any(domain.endswith(tld) for tld in risky_tlds):
             status = "suspicious" if status == "safe" else status
             heuristic_reasons.append(f"uses a high-risk Top-Level Domain ({domain.split('.')[-1]})")
 
-        # Leetspeak in the host is a strong typosquatting signal.
+        # Leetspeak in the host is a typosquatting warning sign.
         if re.search(r"[a-z][0-9][a-z]", domain.lower()):
-            status = "phishing"
+            status = "suspicious" if status == "safe" else status
             heuristic_reasons.append("contains obfuscated characters (leetspeak) often used in typosquatting")
 
         # Login and account language often appears in lure URLs.
         suspicious_keywords = ['login', 'secure', 'account', 'update', 'verify', 'wallet', 'banking']
-        if any(kw in url.lower() for kw in suspicious_keywords):
+        if any(kw in lower_url for kw in suspicious_keywords):
             if status == "safe":
                 status = "suspicious"
                 heuristic_reasons.append("contains sensitive keywords commonly targeted by phishers")
+
+        shorteners = {'bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly', 'is.gd', 'buff.ly', 'adf.ly', 'tiny.cc', 'bit.do', 'cutt.ly', 'rebrand.ly', 'shorturl.at'}
+        if domain in shorteners:
+            status = "suspicious" if status == "safe" else status
+            heuristic_reasons.append("uses a URL shortening service")
+
+        unusual_structure = (
+            features.get("LongURL") == -1
+            or features.get("ShortURL") == -1
+            or features.get("Symbol@") == -1
+            or features.get("Redirecting//") == -1
+            or features.get("SubDomains") == -1
+            or features.get("PrefixSuffix-") == -1
+        )
+        if unusual_structure and status == "safe":
+            status = "suspicious"
+            heuristic_reasons.append("contains unusual URL structure")
+
+        if model_status == "phishing":
+            status = "phishing"
 
         # Recalculate the risk level after the heuristic adjustments.
         risk_level = "low"
@@ -208,7 +235,15 @@ def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = Fal
                 "confidence_score": float(confidence),
                 "phishing_probability": float(confidence),
                 "lexical_threshold": _load_lexical_threshold(),
-                "model_policy": "The system uses advanced URL detection analysis to identify suspicious website patterns.",
+                "model_policy": (
+                    "No major phishing indicators were identified during analysis."
+                    if status == "safe"
+                    else (
+                        "Several suspicious URL characteristics were identified during analysis."
+                        if status == "suspicious"
+                        else "Phishing was detected by the URL model; confidence and risk level determine response severity."
+                    )
+                ),
                 "features": features,
                 "heuristic_reasons": heuristic_reasons,
             },

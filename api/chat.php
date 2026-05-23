@@ -6,6 +6,7 @@ ini_set('max_execution_time', '30');
 set_time_limit(30);
 
 require_once '../config/db.php';
+require_once '../shared/verdict_report.php';
 
 header('Content-Type: application/json');
 
@@ -129,9 +130,10 @@ if ($scanId > 0) {
 
     if ($scan) {
         $analysis = chat_decode_json($scan['analysis_result'] ?? '', []);
-        $llm = chat_decode_json($analysis['llm_report'] ?? ($analysis['llm'] ?? []), []);
+        $reportAudience = ($_SESSION['role'] ?? '') === 'admin' ? 'admin' : 'user';
+        $llm = shield_apply_verdict_report($analysis, $scan, chat_decode_json($analysis['llm_report'] ?? ($analysis['llm'] ?? []), []), $reportAudience);
         $features = chat_decode_json($scan['features'] ?? ($analysis['features'] ?? []), []);
-        $mitre = chat_safe_list($scan['mitre_attack_json'] ?? ($analysis['mitre_techniques'] ?? ($llm['mitre_attack_mapping'] ?? [])));
+        $mitre = chat_safe_list($llm['mitre_attack_mapping'] ?? []);
         $nistContainment = chat_safe_list($llm['containment_actions'] ?? ($analysis['nist_response'] ?? []));
         $nistRecovery = chat_safe_list($llm['eradication_recovery_actions'] ?? ($analysis['incident_response'] ?? []));
         $nistPostIncident = chat_safe_list($llm['post_incident_recommendations'] ?? []);
@@ -141,8 +143,10 @@ if ($scanId > 0) {
             'checked_url' => $scan['url'],
             'detection' => [
                 'final_verdict' => $scan['status'],
-                'confidence_score' => floatval($scan['confidence_score']),
-                'risk_level' => $scan['risk_level'],
+                'display_verdict' => $analysis['display_status'] ?? $scan['status'],
+                'confidence_score' => floatval($analysis['phishing_probability'] ?? $scan['confidence_score']),
+                'phishing_probability' => floatval($analysis['phishing_probability'] ?? $scan['confidence_score']),
+                'risk_level' => $analysis['risk_level'] ?? $scan['risk_level'],
             ],
             'suspicious_indicators' => array_values(array_unique(array_merge($heuristicReasons, chat_safe_list($analysis['detection']['suspicious_indicators'] ?? [])))),
             'extracted_features' => $features,
@@ -153,6 +157,8 @@ if ($scanId > 0) {
                 'post_incident' => $nistPostIncident,
             ],
             'user_advisory' => $scan['user_advisory_text'] ?? ($llm['user_advisory'] ?? ''),
+            'user_interaction_status' => $llm['user_interaction_status'] ?? 'Not collected',
+            'report_audience' => $reportAudience,
         ];
     }
 }

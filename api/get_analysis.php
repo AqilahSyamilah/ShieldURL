@@ -1,5 +1,6 @@
 <?php
 require_once '../config/db.php';
+require_once '../shared/verdict_report.php';
 
 header('Content-Type: application/json');
 
@@ -61,9 +62,15 @@ $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 foreach ($results as &$row) {
     $analysis = json_decode($row['analysis_result'] ?? '', true);
     if (json_last_error() === JSON_ERROR_NONE && is_array($analysis)) {
-        $row['display_status'] = $analysis['display_status'] ?? ($analysis['overall']['display_verdict'] ?? $row['status']);
+        $probability = shield_unit_probability($analysis['phishing_probability'] ?? ($analysis['ml']['phishing_probability'] ?? $row['confidence_score']));
+        $threshold = shield_unit_probability($analysis['selected_threshold'] ?? ($analysis['ml']['selected_threshold'] ?? ($analysis['detection']['lexical_threshold'] ?? 0.5)));
+        $category = shield_verdict_category($analysis['status'] ?? $row['status'], $analysis['display_status'] ?? ($analysis['overall']['display_verdict'] ?? ''), $analysis['risk_level'] ?? '', $probability, $threshold);
+        $row['status'] = $category === 'phishing' ? 'phishing' : ($category === 'suspicious' ? 'suspicious' : 'safe');
+        $row['display_status'] = shield_display_status($category, $analysis['display_status'] ?? ($analysis['overall']['display_verdict'] ?? $row['status']));
+        $row['confidence_score'] = $probability;
     } else {
         $row['display_status'] = $row['status'];
+        $row['confidence_score'] = shield_unit_probability($row['confidence_score']);
     }
     unset($row['analysis_result']);
 }

@@ -242,7 +242,7 @@ def _fallback_detection_analysis(scan_context: dict[str, Any], risky: bool) -> l
                 "Review the URL carefully and verify the destination before entering credentials or sensitive information.",
             ]
         return [
-            "The system uses advanced URL detection analysis to identify suspicious website patterns.",
+            "Phishing was detected by the URL model; confidence and risk level determine response severity.",
             "The scan context indicates indicators such as obfuscation, abnormal domain structure, or missing HTTPS trust signals.",
         ]
     return [
@@ -255,6 +255,9 @@ def _fallback_severity_priority(scan_context: dict[str, Any], risky: bool) -> di
     confidence = _format_confidence_percent(
         _extract_scan_value(
             scan_context,
+            ("phishing_probability",),
+            ("detection", "phishing_probability"),
+            ("ml", "phishing_probability"),
             ("confidence",),
             ("confidence_score",),
             ("detection", "confidence_score"),
@@ -270,10 +273,11 @@ def _fallback_severity_priority(scan_context: dict[str, Any], risky: bool) -> di
                 "confidence_comment": f"The scan confidence is around {confidence}; treat this as a cautious review signal, not confirmed phishing.",
                 "possible_impact": "Users could be exposed to deceptive content if the URL is unsafe, so verify the destination before entering sensitive information.",
             }
+        severity = "High" if "high" in _authoritative_decision(scan_context) else "Medium"
         return {
-            "severity": "Medium",
-            "priority": "High",
-            "confidence_comment": f"The scan confidence is around {confidence}; suspicious website patterns were detected.",
+            "severity": severity,
+            "priority": severity,
+            "confidence_comment": f"The scan confidence is around {confidence}; the URL model classified this as phishing.",
             "possible_impact": "Users may be deceived into opening a phishing URL or disclosing credentials if they interact with the link.",
         }
     return {
@@ -354,6 +358,9 @@ def _fallback_incident_summary(scan_context: dict[str, Any]) -> str:
     confidence_text = _format_confidence_percent(
         _extract_scan_value(
             scan_context,
+            ("phishing_probability",),
+            ("detection", "phishing_probability"),
+            ("ml", "phishing_probability"),
             ("confidence",),
             ("confidence_score",),
             ("detection", "confidence_score"),
@@ -378,9 +385,9 @@ def _fallback_incident_summary(scan_context: dict[str, Any]) -> str:
                 "Users should verify the website carefully before entering passwords, OTPs, or sensitive information."
             )
         return (
-            f"The submitted URL was classified as {verdict_text} with {risk or 'medium'} risk and {confidence_text} confidence based on suspicious indicators "
+            f"The submitted URL was classified as {verdict_text} with {risk or 'medium'} risk and {confidence_text} confidence based on URL indicators "
             "such as obfuscation, abnormal domain structure, and missing HTTPS trust signals. "
-            "The system uses advanced URL detection analysis to identify suspicious website patterns. "
+            "The model threshold was met, so the final detection result remains phishing while the risk level shows response severity. "
             "These indicators suggest possible user deception or credential exposure risk if the link is opened."
         )
     return (
@@ -425,8 +432,8 @@ def _fallback_user_advisory(risky: bool = True) -> str:
             "Report the link to IT/security immediately."
         )
     return (
-        "No immediate phishing threat was identified from the supplied scan context. "
-        "If the URL was unsolicited or unexpected, report it to IT/security before interacting with it."
+        "No immediate action is required based on this scan. "
+        "Continue safe browsing practices and verify unexpected links before entering sensitive information."
     )
 
 
@@ -529,9 +536,9 @@ def _build_prompt(scan_context: dict[str, Any]) -> str:
         "task": "Return valid JSON only for a concise URL incident report.",
         "rules": [
             "Use scan_context only.",
-            "The system uses advanced URL detection analysis to identify suspicious website patterns.",
+            "Use verdict-specific wording: SAFE says no major phishing indicators were identified; SUSPICIOUS says warning signs were found below the phishing threshold; PHISHING says the model threshold was met and risk/confidence determine severity.",
             "Use simple language for non-technical office staff.",
-            "If display_verdict is potentially suspicious, use that wording instead of confirmed phishing language.",
+            "If display_verdict is potentially suspicious, use that wording instead of confirmed phishing language. If verdict is phishing, do not relabel it as suspicious.",
             "incident_summary must be 1-2 analytical sentences, never a title.",
             "For phishing or suspicious URLs, explain what was detected, why it is suspicious, and likely impact.",
             "containment_actions max 2 items.",
@@ -620,8 +627,15 @@ def fallback_llm_report(
     context = scan_context or {}
     risky = _is_risky_scan(context)
     report = json.loads(json.dumps(LLM_REPORT))
+    clicked_value = _extract_scan_value(context, ("clicked",), ("incident_details", "clicked"), default="")
+    clicked_yes = str(clicked_value).lower() in ["true", "1", "yes"]
+    clicked_no = str(clicked_value).lower() in ["false", "0", "no"]
+    interaction_status = "Accessed by user" if clicked_yes else ("Not accessed by user" if clicked_no else "Not collected")
     confidence_value = _extract_scan_value(
         context,
+        ("phishing_probability",),
+        ("detection", "phishing_probability"),
+        ("ml", "phishing_probability"),
         ("confidence",),
         ("confidence_score",),
         ("detection", "confidence_score"),
@@ -639,6 +653,7 @@ def fallback_llm_report(
         ),
         "confidence_score": _format_confidence_percent(confidence_value) if confidence_value not in ["", None] else "",
         "clicked": _extract_scan_value(context, ("clicked",), ("incident_details", "clicked"), default=""),
+        "user_interaction_status": interaction_status,
         "source": _extract_scan_value(context, ("source",), ("overall", "source"), default=""),
         "timestamp": _extract_scan_value(context, ("timestamp",), ("incident_details", "timestamp"), default=""),
     }
@@ -646,19 +661,20 @@ def fallback_llm_report(
     report["severity_priority"] = _fallback_severity_priority(context, risky)
     if risky:
         if _is_potentially_suspicious(context):
+            report["incident_summary"] = (
+                "The URL was accessed and contains suspicious indicators. Exposure is possible only if sensitive information was entered."
+                if clicked_yes else
+                "The URL was not accessed, but it contains suspicious indicators. Avoid opening it until verified."
+            )
             report["containment_actions"] = [
-                "Review the URL carefully before allowing user interaction.",
-                "Verify the destination and source of the link before users enter sensitive information.",
+                "Stop interacting with the page." if clicked_yes else "Do not open the link.",
+                "Do not enter passwords, OTPs, banking information, or personal data." if clicked_yes else "Verify the sender/source.",
+                "Reset password only if credentials were entered." if clicked_yes else "No credential reset is required unless interaction occurred.",
+                "Report the URL to IT/security for verification.",
             ]
-            report["eradication_recovery_actions"] = [
-                "Check whether users interacted with the URL if it was shared internally.",
-                "Escalate for blocking only if review confirms malicious behavior or organization policy requires it.",
-            ]
-            report["post_incident_recommendations"] = [
-                "Document the suspicious indicators and review outcome.",
-                "Remind users to verify unexpected links before entering credentials or sensitive information.",
-            ]
-            report["mitre_attack_mapping"] = []
+            report["eradication_recovery_actions"] = []
+            report["post_incident_recommendations"] = []
+            report["mitre_attack_mapping"] = ["Potentially Related: T1566.002 - Spearphishing Link"]
             report["analyst_notes"] = "Fallback guidance returned cautious review steps because the URL is potentially suspicious, not confirmed phishing."
             report["user_advisory"] = (
                 "Suspicious signals were detected, but this URL is not confirmed as phishing. "
@@ -667,18 +683,19 @@ def fallback_llm_report(
             report["generated_by"] = "fallback"
             report["error"] = str(error_message or "LLM timeout or unavailable")
             return report
+        report["incident_summary"] = (
+            "The URL was accessed and classified as phishing. User exposure may have occurred if any sensitive information was entered."
+            if clicked_yes else
+            "The URL was classified as phishing, but the user did not access it. The risk is reduced because no interaction occurred."
+        )
         report["containment_actions"] = [
-            "Block or avoid the suspicious URL.",
-            "Warn users not to interact with the link.",
+            "Stop using the website immediately." if clicked_yes else "Do not open the URL.",
+            "Do not enter further information." if clicked_yes else "Delete or ignore the message containing the link.",
+            "Reset credentials if login details were entered." if clicked_yes else "Report the URL to IT/security.",
+            "Enable MFA if available." if clicked_yes else "No credential reset is required unless the user later interacted with the site.",
         ]
-        report["eradication_recovery_actions"] = [
-            "Verify whether any user accessed the URL.",
-            "Remove the phishing link from related communications if applicable.",
-        ]
-        report["post_incident_recommendations"] = [
-            "Document the incident and monitor for repeated phishing attempts.",
-            "Update user awareness guidance on phishing and suspicious URLs.",
-        ]
+        report["eradication_recovery_actions"] = []
+        report["post_incident_recommendations"] = []
         report["mitre_attack_mapping"] = [
             {
                 "id": "T1566.002",
@@ -688,21 +705,32 @@ def fallback_llm_report(
         ]
         report["analyst_notes"] = "LLM generation timed out or was unavailable; fallback phishing response guidance was returned."
     else:
-        report["containment_actions"] = [
-            "No immediate blocking action is required based on the supplied scan context.",
-            "Monitor for any user reports or repeated suspicious submissions involving the URL.",
-        ]
-        report["eradication_recovery_actions"] = [
-            "If the URL appeared in communications, verify that no follow-up reports indicate suspicious behavior.",
-            "Retain the scan result for reference in case new indicators emerge later.",
-        ]
+        report["incident_summary"] = (
+            "The URL was accessed, but no major phishing indicators were detected. No immediate action is required."
+            if clicked_yes else
+            "The URL was not accessed and no major phishing indicators were detected."
+        )
+        report["containment_actions"] = []
+        report["eradication_recovery_actions"] = []
         report["post_incident_recommendations"] = [
-            "Document the review outcome and maintain standard monitoring.",
-            "Remind users to verify unexpected links before interacting with them.",
+            "Continue normal browsing." if clicked_yes else "No action required.",
+            "Be cautious before entering sensitive information." if clicked_yes else "Continue safe browsing practices.",
+            "No credential reset is required." if clicked_yes else "",
         ]
         report["mitre_attack_mapping"] = []
-        report["analyst_notes"] = "LLM generation timed out or was unavailable; fallback monitoring guidance was returned."
-    report["user_advisory"] = _fallback_user_advisory(risky)
+        report["analyst_notes"] = "Safe verdict output omits MITRE mapping, NIST containment, blocking, credential reset, and phishing incident wording."
+    if not risky:
+        report["user_advisory"] = (
+            "No immediate action is required. Continue normal browsing and be cautious before entering sensitive information."
+            if clicked_yes else
+            "No action is required. Continue safe browsing practices."
+        )
+    else:
+        report["user_advisory"] = (
+            "Stop using the website immediately. Reset credentials if login details were entered, enable MFA if available, and report the incident to IT/security."
+            if clicked_yes else
+            "Do not open the URL. Report it to IT/security; credential reset is not required unless you interacted with the site."
+        )
     report["generated_by"] = "fallback"
     report["error"] = str(error_message or "LLM timeout or unavailable")
     return report

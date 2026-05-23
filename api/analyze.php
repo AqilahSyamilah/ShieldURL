@@ -8,6 +8,7 @@ set_time_limit(240);
 
 require_once '../config/db.php';
 require_once '../shared/audit.php';
+require_once '../shared/verdict_report.php';
 
 header('Content-Type: application/json');
 
@@ -196,18 +197,27 @@ $isPhishing =
     in_array($overallVerdict, ["PHISHING", "LIKELY_PHISHING", "CONFIRMED_PHISHING"], true) ||
     ($overallStatus === "PHISHING") ||
     ($mlStatus === "PHISHING");
+$displayStatus = $api["overall"]["display_verdict"] ?? ($detection["display_verdict"] ?? ($isPhishing ? "phishing" : "safe"));
+$riskLevel = strtolower($api["overall"]["risk_level"] ?? ($detection["risk_level"] ?? ($api["ml"]["risk_level"] ?? "low")));
+$phishingProbability = shield_unit_probability($api["ml"]["phishing_probability"] ?? ($detection["phishing_probability"] ?? ($api["ml"]["confidence_score"] ?? ($detection["confidence_score"] ?? 0))));
+$selectedThreshold = shield_unit_probability($api["ml"]["selected_threshold"] ?? ($detection["lexical_threshold"] ?? 0.5));
+$verdictCategory = shield_verdict_category($isPhishing ? "phishing" : "safe", $displayStatus, $riskLevel, $phishingProbability, $selectedThreshold);
+$normalizedRiskLevel = $verdictCategory === "phishing"
+    ? ($phishingProbability < 0.70 ? "medium" : "high")
+    : ($verdictCategory === "suspicious" ? "medium" : "low");
 
 $result = [
     "success" => (bool)($api["success"] ?? true) || $hasDetection,
     "url" => $api["url"] ?? $url,
     "clicked" => $api["clicked"] ?? ($data["clicked"] ?? null),
-    "status" => $isPhishing ? "phishing" : "safe",
-    "display_status" => $api["overall"]["display_verdict"] ?? ($detection["display_verdict"] ?? ($isPhishing ? "phishing" : "safe")),
-    "risk_level" => strtolower($api["overall"]["risk_level"] ?? ($detection["risk_level"] ?? ($api["ml"]["risk_level"] ?? "low"))),
-    "confidence_score" => floatval($api["ml"]["confidence_score"] ?? ($detection["confidence_score"] ?? 0)),
-    "phishing_probability" => floatval($api["ml"]["phishing_probability"] ?? ($detection["phishing_probability"] ?? ($api["ml"]["confidence_score"] ?? ($detection["confidence_score"] ?? 0)))),
-    "selected_threshold" => floatval($api["ml"]["selected_threshold"] ?? ($detection["lexical_threshold"] ?? 0.5)),
-    "model_policy" => $api["overall"]["model_policy"] ?? ($api["ml"]["model_policy"] ?? ($detection["model_policy"] ?? "The system uses advanced URL detection analysis to identify suspicious website patterns.")),
+    "status" => $verdictCategory === "phishing" ? "phishing" : ($verdictCategory === "suspicious" ? "suspicious" : "safe"),
+    "display_status" => shield_display_status($verdictCategory, $displayStatus),
+    "risk_level" => $normalizedRiskLevel,
+    "confidence_score" => $phishingProbability,
+    "phishing_probability" => $phishingProbability,
+    "model_confidence_score" => floatval($api["ml"]["confidence_score"] ?? ($detection["confidence_score"] ?? $phishingProbability)),
+    "selected_threshold" => $selectedThreshold,
+    "model_policy" => $api["overall"]["model_policy"] ?? ($api["ml"]["model_policy"] ?? ($detection["model_policy"] ?? "No major phishing indicators were identified during analysis.")),
     "features" => $api["ml"]["features"] ?? ($detection["features"] ?? []),
     "llm_summary" => "",
     "llm_report" => [],
@@ -236,6 +246,8 @@ $result = [
 ];
 $result["timing"]["cache_used"] = $result["cache_used"];
 $result["timing"]["fallback_used"] = false;
+$reportAudience = ($_SESSION['role'] ?? '') === 'admin' ? 'admin' : 'user';
+shield_apply_verdict_report($result, [], [], $reportAudience);
 
 if (!$result["success"]) {
     $result["message"] = $api["message"] ?? "Scan failed";
@@ -266,13 +278,7 @@ try {
         $cachedClicked = $cachedAnalysis['clicked'] ?? null;
         $cachedReport = $cachedAnalysis['llm_report'] ?? ($cachedAnalysis['llm'] ?? []);
         if ($cachedClicked === $clickedForCache && is_array($cachedReport) && !empty($cachedReport) && (($cachedReport['status'] ?? '') !== 'pending')) {
-            $result['llm_report'] = $cachedReport;
-            $result['llm'] = $cachedReport;
-            $result['llm_summary'] = $cachedReport['incident_summary'] ?? '';
-            $result['mitre_techniques'] = $cachedReport['mitre_attack_mapping'] ?? [];
-            $result['nist_response'] = $cachedReport['containment_actions'] ?? [];
-            $result['incident_response'] = $cachedReport['eradication_recovery_actions'] ?? [];
-            $result['user_advisory'] = $cachedReport['user_advisory'] ?? '';
+            shield_apply_verdict_report($result, [], $cachedReport, $reportAudience);
             $result['llm_pending'] = false;
             $result['cache_used'] = true;
             $result['timing']['cache_used'] = true;
