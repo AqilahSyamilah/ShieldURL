@@ -276,6 +276,197 @@ function pdf_build_document($title, $lines)
     return $pdf;
 }
 
+function pdf_build_styled_report($data)
+{
+    $ops = [];
+    $pageWidth = 595;
+    $margin = 28;
+    $contentWidth = $pageWidth - ($margin * 2);
+
+    $rgb = function ($hex) {
+        $hex = ltrim($hex, '#');
+        return [
+            hexdec(substr($hex, 0, 2)) / 255,
+            hexdec(substr($hex, 2, 2)) / 255,
+            hexdec(substr($hex, 4, 2)) / 255,
+        ];
+    };
+
+    $setFill = function ($hex) use (&$ops, $rgb) {
+        [$r, $g, $b] = $rgb($hex);
+        $ops[] = sprintf('%.4F %.4F %.4F rg', $r, $g, $b);
+    };
+    $setStroke = function ($hex) use (&$ops, $rgb) {
+        [$r, $g, $b] = $rgb($hex);
+        $ops[] = sprintf('%.4F %.4F %.4F RG', $r, $g, $b);
+    };
+    $rect = function ($x, $y, $w, $h, $fill = '', $stroke = '') use (&$ops, $setFill, $setStroke) {
+        if ($fill !== '') {
+            $setFill($fill);
+        }
+        if ($stroke !== '') {
+            $setStroke($stroke);
+        }
+        $mode = $fill !== '' && $stroke !== '' ? 'B' : ($fill !== '' ? 'f' : 'S');
+        $ops[] = sprintf('%.2F %.2F %.2F %.2F re %s', $x, $y, $w, $h, $mode);
+    };
+    $text = function ($x, $y, $value, $size = 9, $bold = false, $color = '#0f172a') use (&$ops, $setFill) {
+        $setFill($color);
+        $font = $bold ? 'F2' : 'F1';
+        $ops[] = "BT /{$font} {$size} Tf 1 0 0 1 " . sprintf('%.2F %.2F', $x, $y) . ' Tm (' . pdf_escape_text($value) . ') Tj ET';
+    };
+    $wrapText = function ($value, $chars) {
+        return pdf_wrap_text((string)$value, $chars);
+    };
+    $sectionTitle = function ($title, $y) use (&$ops, $rect, $text, $margin, $contentWidth) {
+        $rect($margin, $y - 22, $contentWidth, 22, '#f8fbff', '#dbe4ef');
+        $text($margin + 8, $y - 14, strtoupper($title), 8, true, '#0b1f3a');
+        return $y - 22;
+    };
+
+    $ops[] = 'q';
+    $rect(0, 0, 595, 842, '#ffffff');
+
+    $y = 806;
+    $rect($margin, 744, $contentWidth, 68, '#0b1f3a');
+    $text($margin + 16, 789, 'SHIELDURL SOC REPORT', 6.5, true, '#bfdbfe');
+    $text($margin + 16, 768, $data['title'], 18, true, '#ffffff');
+    $text(402, 792, 'Case ID', 6.5, false, '#bfdbfe');
+    $text(500, 792, $data['case_id'], 7.5, true, '#ffffff');
+    $text(402, 776, 'Generated', 6.5, false, '#bfdbfe');
+    $text(500, 776, $data['generated'], 7.5, true, '#ffffff');
+    $text(402, 760, 'Analyzed', 6.5, false, '#bfdbfe');
+    $text(500, 760, $data['analyzed'], 7.5, true, '#ffffff');
+
+    $y = 724;
+    $statusColor = $data['category'] === 'safe' ? '#166534' : ($data['category'] === 'suspicious' ? '#b45309' : '#8f1418');
+    $rect($margin, $y - 94, 190, 94, $statusColor);
+    $text($margin + 14, $y - 28, 'THREAT STATUS', 7, true, '#ffffff');
+    $text($margin + 14, $y - 55, strtoupper($data['display_status']), 20, true, '#ffffff');
+    $text($margin + 14, $y - 79, 'SEVERITY: ' . strtoupper($data['severity']), 7, true, '#ffffff');
+
+    $metrics = [
+        ['Phishing Probability', $data['confidence']],
+        ['Risk Level', $data['risk_level']],
+        ['User Interaction Status', $data['interaction']],
+        ['Risk Score', $data['risk_score']],
+        ['Scan Duration', $data['scan_duration']],
+        ['Detection Engine', $data['engine']],
+    ];
+    $mx = $margin + 198;
+    $mw = ($contentWidth - 198 - 12) / 3;
+    foreach ($metrics as $i => $metric) {
+        $col = $i % 3;
+        $row = intdiv($i, 3);
+        $x = $mx + ($col * ($mw + 6));
+        $cardY = $y - 43 - ($row * 48);
+        $rect($x, $cardY, $mw, 40, '#ffffff', '#dbe4ef');
+        $text($x + 6, $cardY + 26, strtoupper($metric[0]), 6.2, true, '#64748b');
+        $text($x + 6, $cardY + 12, $metric[1], 8.8, true, '#0b1f3a');
+    }
+
+    $y = 610;
+    $y = $sectionTitle('Scan Decision Explanation', $y);
+    $decisionMetrics = [
+        ['Phishing Probability', $data['confidence']],
+        ['Detection Sensitivity', $data['threshold']],
+        ['System Detection', $data['system_detection']],
+        ['Safety Status', strtoupper($data['display_status'])],
+    ];
+    $boxW = ($contentWidth - 12) / 2;
+    foreach ($decisionMetrics as $i => $metric) {
+        $x = $margin + (($i % 2) * ($boxW + 12));
+        $boxY = $y - 36 - (intdiv($i, 2) * 40);
+        $rect($x, $boxY, $boxW, 32, '#ffffff', '#dbe4ef');
+        $text($x + 8, $boxY + 19, strtoupper($metric[0]), 6.4, true, '#64748b');
+        $text($x + 8, $boxY + 7, $metric[1], 8.8, true, '#0b1f3a');
+    }
+    $y -= 86;
+    foreach ($wrapText($data['model_policy'], 116) as $line) {
+        $text($margin + 8, $y, $line, 7.2, false, '#334155');
+        $y -= 9;
+    }
+    $y -= 4;
+
+    $y = $sectionTitle('URL Evidence', $y);
+    $evidence = [
+        ['Full URL', $data['url']],
+        ['Domain', $data['domain']],
+        ['Protocol', strtoupper($data['protocol'])],
+        ['TLD', $data['tld'] ?: 'N/A'],
+        ['HTTPS Status', $data['https_status']],
+        ['Risk Indicators', $data['risk_indicators'] ?: 'No elevated URL indicators'],
+    ];
+    $y -= 12;
+    foreach ($evidence as [$label, $value]) {
+        $text($margin + 8, $y, strtoupper($label), 6.3, true, '#64748b');
+        $first = true;
+        foreach ($wrapText($value, $label === 'Full URL' ? 94 : 100) as $line) {
+            $text($margin + 108, $y, $line, 7.2, $first, '#0f2747');
+            $y -= 9;
+            $first = false;
+        }
+        if ($first) $y -= 9;
+        $setStroke('#e8eef6');
+        $ops[] = sprintf('%.2F %.2F m %.2F %.2F l S', $margin + 8, $y + 4, $margin + $contentWidth - 8, $y + 4);
+    }
+    $y -= 4;
+
+    $y = $sectionTitle('Incident Summary', $y);
+    $y -= 12;
+    foreach (array_slice($data['summary'], 0, 5) as $summary) {
+        foreach ($wrapText('- ' . $summary, 112) as $line) {
+            $text($margin + 8, $y, $line, 7.2, false, '#0f172a');
+            $y -= 9;
+        }
+    }
+    $y -= 4;
+
+    $y = $sectionTitle('NIST Incident Response Timeline', $y);
+    $actions = array_slice($data['actions'], 0, 12);
+    $columns = [[$margin + 8, $y - 12], [$margin + ($contentWidth / 2) + 4, $y - 12]];
+    foreach ($actions as $index => $action) {
+        $col = $index >= 6 ? 1 : 0;
+        [$x, $actionY] = $columns[$col];
+        $text($x, $actionY, '- ' . $action, 6.9, false, '#0f172a');
+        $columns[$col][1] -= 10;
+    }
+    $y = min($columns[0][1], $columns[1][1]) - 8;
+
+    $y = max($y, 58);
+    $rect($margin, $y - 24, $contentWidth, 24, '#fffbeb', '#f2bd35');
+    $text($margin + 8, $y - 10, 'User Advisory', 7, true, '#92400e');
+    foreach (array_slice($wrapText($data['advisory'], 112), 0, 2) as $i => $line) {
+        $text($margin + 86, $y - 10 - ($i * 9), $line, 7, false, '#713f12');
+    }
+
+    $ops[] = 'Q';
+    $stream = implode("\n", $ops) . "\n";
+
+    $objects = [
+        1 => '<< /Type /Catalog /Pages 2 0 R >>',
+        2 => '<< /Type /Pages /Kids [5 0 R] /Count 1 >>',
+        3 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        4 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
+        5 => '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>',
+        6 => "<< /Length " . strlen($stream) . " >>\nstream\n{$stream}endstream",
+    ];
+
+    $pdf = "%PDF-1.4\n";
+    $offsets = [0];
+    foreach ($objects as $number => $body) {
+        $offsets[$number] = strlen($pdf);
+        $pdf .= "{$number} 0 obj\n{$body}\nendobj\n";
+    }
+    $xrefOffset = strlen($pdf);
+    $pdf .= "xref\n0 7\n0000000000 65535 f \n";
+    for ($i = 1; $i <= 6; $i++) {
+        $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+    }
+    $pdf .= "trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n{$xrefOffset}\n%%EOF";
+    return $pdf;
+}
+
 function browser_pdf_binary()
 {
     $candidates = [
@@ -284,6 +475,11 @@ function browser_pdf_binary()
         'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
         'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
         'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/snap/bin/chromium',
     ];
     foreach ($candidates as $candidate) {
         if ($candidate && file_exists($candidate)) {
@@ -456,46 +652,37 @@ if (strtolower((string)($_GET['format'] ?? '')) === 'pdf') {
         exit();
     }
 
-    $pdfLines = [
-        ['text' => 'Case Details', 'size' => 13, 'bold' => true],
-        'Case ID: #' . str_pad((string)$report['id'], 6, '0', STR_PAD_LEFT),
-        'Generated: ' . date('Y-m-d H:i:s'),
-        'Analyzed: ' . ($report['analyzed_at'] ?? ''),
-        'URL: ' . $url,
-        '',
-        ['text' => 'Threat Status', 'size' => 13, 'bold' => true],
-        'Safety Status: ' . strtoupper($displayStatus),
-        'System Detection: ' . $systemDetection,
-        'Risk Level: ' . ucfirst((string)$riskLevel),
-        'Severity: ' . $severity,
-        'Phishing Probability: ' . number_format($confidence, 2) . '%',
-        'Detection Sensitivity: ' . number_format($selectedThreshold, 2) . '%',
-        'User Interaction Status: ' . ($llmReport['user_interaction_status'] ?? 'Not collected'),
-        '',
-        ['text' => 'Incident Summary', 'size' => 13, 'bold' => true],
-    ];
-    foreach (array_slice($executiveSummary, 0, 6) as $summary) {
-        $pdfLines[] = '- ' . $summary;
-    }
-    $pdfLines[] = '';
-    $pdfLines[] = ['text' => 'Recommended Actions', 'size' => 13, 'bold' => true];
-    foreach (array_slice(array_merge($nistSteps, $irSteps, $postIncidentSteps), 0, 12) as $step) {
-        $pdfLines[] = '- ' . $step;
-    }
-    $pdfLines[] = '';
-    $pdfLines[] = ['text' => 'User Advisory', 'size' => 13, 'bold' => true];
-    $pdfLines[] = $userAdvisory ?: 'No advisory available.';
-    if (!empty($mitre)) {
-        $pdfLines[] = '';
-        $pdfLines[] = ['text' => 'MITRE ATT&CK Mapping', 'size' => 13, 'bold' => true];
-        foreach ($mitre as $item) {
-            $techId = is_array($item) ? ($item['id'] ?? $item['technique_id'] ?? '') : '';
-            $techName = is_array($item) ? ($item['name'] ?? $item['technique'] ?? $item['description'] ?? '') : (string)$item;
-            $pdfLines[] = '- ' . trim($techId . ($techId && $techName ? ' - ' : '') . $techName);
-        }
-    }
-
-    $pdf = pdf_build_document($reportTitle, $pdfLines);
+    $allActions = array_values(array_filter(array_merge($nistSteps, $irSteps, $postIncidentSteps)));
+    $riskIndicatorText = is_array($riskIndicators)
+        ? implode(', ', array_map('strval', $riskIndicators))
+        : (string)$riskIndicators;
+    $pdf = pdf_build_styled_report([
+        'title' => $reportTitle,
+        'case_id' => '#' . str_pad((string)$report['id'], 6, '0', STR_PAD_LEFT),
+        'generated' => date('Y-m-d H:i:s'),
+        'analyzed' => (string)($report['analyzed_at'] ?? ''),
+        'category' => $verdictCategory,
+        'display_status' => (string)$displayStatus,
+        'severity' => $severity,
+        'confidence' => number_format($confidence, 2) . '%',
+        'threshold' => number_format($selectedThreshold, 2) . '%',
+        'system_detection' => $systemDetection,
+        'risk_level' => ucfirst((string)$riskLevel),
+        'interaction' => (string)($llmReport['user_interaction_status'] ?? 'Not collected'),
+        'risk_score' => $riskScore . '/10',
+        'scan_duration' => is_numeric($scanDuration) ? $scanDuration . 's' : (string)$scanDuration,
+        'engine' => $engine,
+        'model_policy' => (string)$modelPolicy,
+        'url' => $url,
+        'domain' => $domain,
+        'protocol' => $protocol,
+        'tld' => $tld,
+        'https_status' => $httpsStatus,
+        'risk_indicators' => $riskIndicatorText,
+        'summary' => $executiveSummary,
+        'actions' => $allActions,
+        'advisory' => $userAdvisory ?: 'No advisory available.',
+    ]);
     header('Content-Type: application/pdf');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('Content-Length: ' . strlen($pdf));
