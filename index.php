@@ -2269,15 +2269,15 @@ try {
         <div class="stats-grid">
             <div class="stat-card">
                 <h3>URLs Checked</h3>
-                <div class="number"><?php echo (int)($total_checks ?? 0); ?></div>
+                <div class="number" id="totalChecksCount"><?php echo (int)($total_checks ?? 0); ?></div>
             </div>
             <div class="stat-card">
                 <h3>Safe URLs</h3>
-                <div class="number" style="color: #48bb78;"><?php echo (int)($safe_count ?? 0); ?></div>
+                <div class="number" id="safeUrlsCount" style="color: #48bb78;"><?php echo (int)($safe_count ?? 0); ?></div>
             </div>
             <div class="stat-card">
                 <h3>Phishing</h3>
-                <div class="number" style="color: #f56565;"><?php echo (int)($phishing_count ?? 0); ?></div>
+                <div class="number" id="phishingUrlsCount" style="color: #f56565;"><?php echo (int)($phishing_count ?? 0); ?></div>
             </div>
         </div>
 
@@ -2668,6 +2668,35 @@ try {
                 .replaceAll('>', '&gt;')
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#39;');
+        }
+
+        function parseAppDate(value) {
+            if (!value) return null;
+            const text = String(value).trim();
+            if (!text) return null;
+            const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(text)
+                ? text.replace(' ', 'T')
+                : text;
+            const date = new Date(normalized);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function formatAppDateTime(value) {
+            const date = parseAppDate(value);
+            return date ? date.toLocaleString() : '-';
+        }
+
+        function updateStatsCounts(stats) {
+            if (!stats || typeof stats !== 'object') return;
+            const setCount = (id, value) => {
+                const el = document.getElementById(id);
+                if (el && value !== undefined && value !== null) {
+                    el.textContent = Number(value || 0).toLocaleString();
+                }
+            };
+            setCount('totalChecksCount', stats.total_checks);
+            setCount('safeUrlsCount', stats.safe_count);
+            setCount('phishingUrlsCount', stats.phishing_count);
         }
 
         function setScanButtonLabel(label) {
@@ -3152,7 +3181,7 @@ try {
                     ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
                     : (detail.llm_summary || 'No incident summary available.');
                 document.getElementById('analysisDetails').textContent = JSON.stringify(detail.features || {}, null, 2);
-                document.getElementById('analyzedTime').textContent = detail.analyzed_at ? new Date(detail.analyzed_at).toLocaleString() : '-';
+                document.getElementById('analyzedTime').textContent = formatAppDateTime(detail.analyzed_at);
                 document.getElementById('userAdvisory').textContent = detail.user_advisory || 'No advisory available.';
 
                 renderSimpleListFromSnapshot('containmentList', normalizeToList(detail.incident_response), '');
@@ -3658,6 +3687,7 @@ try {
 
                 if (isSuccessfulScan) {
                     clearLoadingTimers();
+                    updateStatsCounts(result.stats);
                     resultDiv.className = 'result-message success';
                     const llmReport = result.llm_report && typeof result.llm_report === 'object' ? result.llm_report : {};
                     const llmBridge = result.llm && typeof result.llm === 'object' ? result.llm : {};
@@ -3686,7 +3716,8 @@ try {
 
                     const features = result.features || detection.features || {};
                     document.getElementById('analysisDetails').textContent = JSON.stringify(features, null, 2); // Show features for now as "details"
-                    document.getElementById('analyzedTime').textContent = new Date().toLocaleString();
+                    const analyzedAt = result.analyzed_at || new Date().toISOString();
+                    document.getElementById('analyzedTime').textContent = formatAppDateTime(analyzedAt);
 
                     const pickFirst = (...values) => {
                         for (const value of values) {
@@ -3968,10 +3999,10 @@ try {
                     const reportUrl = result.report_id ? `api/download_report.php?id=${result.report_id}` : '';
                     const snapshotKey = captureCurrentResultSnapshot(reportUrl);
                     const saveHistoryPref = getPreference('shieldurl_pref_save_history', 'enabled');
-                    if (saveHistoryPref === 'enabled') {
+                    if (saveHistoryPref === 'enabled' && !result.report_id) {
                         localScanHistory.unshift({
                             key: snapshotKey,
-                            analyzedAt: new Date().toISOString(),
+                            analyzedAt,
                             url: displayUrl,
                             status: displayStatusText,
                             machineStatus: displayStatus,
@@ -4068,8 +4099,8 @@ try {
                         }, 900);
                     }
 
-                    // Reload history
-                    setTimeout(() => loadHistory(), 500);
+                    // Reload history from the saved database row as soon as the scan result is returned.
+                    loadHistory();
                 } else {
                     clearLoadingTimers();
                     isScanRunning = false;
@@ -4120,7 +4151,8 @@ try {
                     const rowDisplayStatus = String(row.status || '').toLowerCase();
                     if (status && rowStatus !== status.toLowerCase() && rowDisplayStatus !== status.toLowerCase()) return false;
 
-                    const analyzedTime = new Date(row.analyzedAt).getTime();
+                    const analyzedDate = parseAppDate(row.analyzedAt);
+                    const analyzedTime = analyzedDate ? analyzedDate.getTime() : 0;
                     if (fromTime && analyzedTime < fromTime) return false;
                     if (toTime && analyzedTime > toTime) return false;
 
@@ -4132,8 +4164,10 @@ try {
                     return true;
                 })
                 .sort((a, b) => {
-                    const aTime = new Date(a.analyzedAt).getTime() || 0;
-                    const bTime = new Date(b.analyzedAt).getTime() || 0;
+                    const aDate = parseAppDate(a.analyzedAt);
+                    const bDate = parseAppDate(b.analyzedAt);
+                    const aTime = aDate ? aDate.getTime() : 0;
+                    const bTime = bDate ? bDate.getTime() : 0;
                     return sort === 'oldest' ? aTime - bTime : bTime - aTime;
                 });
         }
@@ -4175,7 +4209,7 @@ try {
 
             tbody.innerHTML = pageRows.map(row => `
                 <tr>
-                    <td>${new Date(row.analyzedAt).toLocaleString()}</td>
+                    <td>${formatAppDateTime(row.analyzedAt)}</td>
                     <td><a href="${escapeHtml(row.url)}" target="_blank">${escapeHtml(String(row.url || '').substring(0, 64))}${String(row.url || '').length > 64 ? '...' : ''}</a></td>
                     <td><span class="badge ${String(row.status || '').toLowerCase().includes('suspicious') ? 'suspicious' : escapeHtml(row.machineStatus || row.status)}">${escapeHtml(String(row.status).toUpperCase())}</span></td>
                     <td>${Number(row.confidence || 0).toFixed(2)}%</td>
@@ -4220,7 +4254,7 @@ try {
                         status: entry.display_status || entry.status,
                         machineStatus: entry.status,
                         confidence: Number(entry.confidence_score || 0) * 100,
-                        riskLevel: mapRiskFromStatus(entry.status),
+                        riskLevel: entry.risk_level ? `${String(entry.risk_level).charAt(0).toUpperCase()}${String(entry.risk_level).slice(1)} Risk` : mapRiskFromStatus(entry.status),
                         reportUrl: entry.id ? `api/download_report.php?id=${entry.id}` : '',
                         isRemote: true
                     }));

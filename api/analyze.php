@@ -12,6 +12,25 @@ require_once '../shared/verdict_report.php';
 
 header('Content-Type: application/json');
 
+function scan_stats_for_user(PDO $conn, $userId)
+{
+    $statsStmt = $conn->prepare("
+        SELECT
+            COUNT(*) AS total_checks,
+            SUM(CASE WHEN status = 'safe' THEN 1 ELSE 0 END) AS safe_count,
+            SUM(CASE WHEN status = 'phishing' THEN 1 ELSE 0 END) AS phishing_count
+        FROM url_logs
+        WHERE user_id = ?
+    ");
+    $statsStmt->execute([$userId]);
+    $stats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    return [
+        'total_checks' => (int)($stats['total_checks'] ?? 0),
+        'safe_count' => (int)($stats['safe_count'] ?? 0),
+        'phishing_count' => (int)($stats['phishing_count'] ?? 0),
+    ];
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -314,6 +333,11 @@ try {
     ]);
 
         $result['report_id'] = $conn->lastInsertId();
+        $savedScan = $conn->prepare("SELECT analyzed_at FROM url_logs WHERE id = ? LIMIT 1");
+        $savedScan->execute([$result['report_id']]);
+        $savedScanRow = $savedScan->fetch(PDO::FETCH_ASSOC) ?: [];
+        $result['analyzed_at'] = $savedScanRow['analyzed_at'] ?? null;
+        $result['stats'] = scan_stats_for_user($conn, $_SESSION['user_id']);
         audit_log($conn, 'url_scan', "Scanned URL '{$url}' with status '{$result['status']}'", 'success');
         $auditLogged = true;
     }

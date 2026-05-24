@@ -3,6 +3,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+date_default_timezone_set('Asia/Kuala_Lumpur');
+
 class Database
 {
     
@@ -34,6 +36,7 @@ class Database
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
+            $this->conn->exec("SET time_zone = '+08:00'");
 
             $this->setupDatabase();
             return $this->conn;

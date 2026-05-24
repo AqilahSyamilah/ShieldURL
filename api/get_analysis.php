@@ -26,7 +26,7 @@ $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 
 if ($isAdmin) {
     $sql = "
-        SELECT l.id, l.url, l.status, l.confidence_score, l.analyzed_at, l.analysis_result, u.username
+        SELECT l.id, l.url, l.status, l.risk_level, l.confidence_score, l.analyzed_at, l.analysis_result, u.username
         FROM url_logs l
         JOIN users u ON l.user_id = u.id
     ";
@@ -42,7 +42,7 @@ if ($isAdmin) {
     $stmt->execute($params);
 } else {
     $sql = "
-        SELECT id, url, status, confidence_score, analyzed_at, analysis_result, 'Me' as username
+        SELECT id, url, status, risk_level, confidence_score, analyzed_at, analysis_result, 'Me' as username
         FROM url_logs
         WHERE user_id = :user_id
     ";
