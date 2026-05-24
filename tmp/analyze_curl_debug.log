@@ -1791,3 +1791,10 @@ Content-Length: 90
 < 
 * Connection #0 to host 127.0.0.1 left intact
 curl_errno=0 curl_error= http_code=200 total=0.238133
+
+[2026-05-23T21:12:20+02:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/agoda-ddubai.webflow.io\/","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* connect to 127.0.0.1 port 8000 failed: Connection refused
+* Failed to connect to 127.0.0.1 port 8000 after 2045 ms: Couldn't connect to server
+* Closing connection
+curl_errno=7 curl_error=Failed to connect to 127.0.0.1 port 8000 after 2045 ms: Couldn't connect to server http_code=0 total=2.047255

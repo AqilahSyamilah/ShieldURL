@@ -10,10 +10,6 @@ if (isset($_SESSION['user_id'])) {
     header("Location: mfa_setup.php");
     exit();
   }
-  if (!empty($_SESSION['mfa_required']) && !empty($_SESSION['mfa_configured']) && empty($_SESSION['mfa_verified'])) {
-    header("Location: verify_2fa.php");
-    exit();
-  }
   if ($_SESSION['role'] === 'admin') {
     header("Location: ../admin/index.php");
   } else {

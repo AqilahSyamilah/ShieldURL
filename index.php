@@ -43,20 +43,9 @@ if ($_SESSION['force_password_change'] && $currentPage !== 'change_password.php'
 if (
     $_SESSION['mfa_required'] &&
     !$_SESSION['mfa_configured'] &&
-    !in_array($currentPage, ['mfa_setup.php', 'verify_2fa.php'])
+    $currentPage !== 'mfa_setup.php'
 ) {
     header("Location: auth/mfa_setup.php");
-    exit();
-}
-
-/* FORCE MFA VERIFICATION EVERY LOGIN SESSION */
-if (
-    $_SESSION['mfa_required'] &&
-    $_SESSION['mfa_configured'] &&
-    empty($_SESSION['mfa_verified']) &&
-    $currentPage !== 'verify_2fa.php'
-) {
-    header("Location: auth/verify_2fa.php");
     exit();
 }
 

@@ -32,10 +32,6 @@ if ($_SESSION['mfa_required'] && !$_SESSION['mfa_configured']) {
   header("Location: ../auth/mfa_setup.php");
   exit();
 }
-if ($_SESSION['mfa_required'] && $_SESSION['mfa_configured'] && empty($_SESSION['mfa_verified'])) {
-  header("Location: ../auth/verify_2fa.php");
-  exit();
-}
 
 $stmt = $conn->prepare("SELECT COUNT(*) as total_users FROM users");
 $stmt->execute();
