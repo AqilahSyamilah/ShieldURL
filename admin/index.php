@@ -3110,7 +3110,9 @@ $users_online = $stmt->fetch()['users_online'];
       const displayClass = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : String(detail.status || '').toLowerCase();
       const detailMode = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : (String(detail.status || '').toLowerCase() === 'phishing' ? 'phishing' : 'safe');
       const checkedUrl = displayScanValue(detail.url);
-      const nistActions = normalizeScanList(detail.nist_response).length ? detail.nist_response : detail.incident_response;
+      const recommendedActions = normalizeScanList(detail.nist_response);
+      const followUpActions = normalizeScanList(detail.incident_response);
+      const additionalGuidance = normalizeScanList(detail.post_incident_recommendations);
       const summary = String(detail.display_status || '').toLowerCase().includes('potentially suspicious')
         ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
         : displayScanValue(detail.llm_summary);
@@ -3136,7 +3138,9 @@ $users_online = $stmt->fetch()['users_online'];
           <strong style="display:block; color:#0f172a; margin-bottom:0.35rem;">Detailed Summary</strong>
           <pre>${escapeHtml(summary)}</pre>
         `, true)}
-        ${detailMode === 'safe' ? '' : auditModalRow(detailMode === 'suspicious' ? 'Cautious Review Actions' : 'NIST Actions', formatScanList(nistActions), true)}
+        ${auditModalRow(detailMode === 'suspicious' ? 'Cautious Review Actions' : 'Recommended Actions', formatScanList(recommendedActions), true)}
+        ${auditModalRow('Follow-Up', formatScanList(followUpActions), true)}
+        ${auditModalRow('Additional Guidance', formatScanList(additionalGuidance), true)}
         ${detailMode === 'safe' ? '' : auditModalRow(detailMode === 'suspicious' ? 'Potentially Related MITRE ATT&CK' : 'MITRE ATT&CK', formatScanMitre(detail.mitre_attack), true)}
         ${auditModalRow('User Advisory', `<pre>${escapeHtml(displayScanValue(detail.user_advisory))}</pre>`, true)}
       `;

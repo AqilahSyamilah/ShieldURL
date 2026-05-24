@@ -694,6 +694,8 @@ $timeline = [];
 if ($reportAudience === 'user') {
     $timeline = [
         ['Recommended Actions', 'Shield', $nistSteps],
+        ['Follow-Up', 'Report', $irSteps],
+        ['Additional Guidance', 'Shield', $postIncidentSteps],
     ];
 } elseif ($verdictCategory === 'safe') {
     $timeline = [

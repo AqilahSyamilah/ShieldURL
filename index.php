@@ -3074,7 +3074,9 @@ try {
             const displayStatus = String(detail.display_status || detail.display_verdict || status);
             const displayClass = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : String(detail.status || '').toLowerCase();
             const detailMode = displayStatus.toLowerCase().includes('suspicious') ? 'suspicious' : (String(detail.status || '').toLowerCase() === 'phishing' ? 'phishing' : 'safe');
-            const nistActions = normalizeToList(detail.nist_response).length ? detail.nist_response : detail.incident_response;
+            const recommendedActions = normalizeToList(detail.nist_response);
+            const followUpActions = normalizeToList(detail.incident_response);
+            const additionalGuidance = normalizeToList(detail.post_incident_recommendations);
             const checkedUrl = displayValue(detail.url);
             const summary = displayValue(detail.llm_summary || detail.incidentSummary);
             const behavior = threatBehaviorBullets(detail);
@@ -3101,7 +3103,9 @@ try {
                             <pre>${escapeHtml(summary)}</pre>
                         </div>
                     `, true)}
-                    ${detailMode === 'safe' ? '' : scanDetailRow(detailMode === 'suspicious' ? 'Cautious Review Actions' : 'NIST Recommended Actions', formatActionList(nistActions), true)}
+                    ${scanDetailRow(detailMode === 'suspicious' ? 'Cautious Review Actions' : 'Recommended Actions', formatActionList(recommendedActions), true)}
+                    ${scanDetailRow('Follow-Up', formatActionList(followUpActions), true)}
+                    ${scanDetailRow('Additional Guidance', formatActionList(additionalGuidance), true)}
                     ${detailMode === 'safe' ? '' : scanDetailRow(detailMode === 'suspicious' ? 'Potentially Related MITRE ATT&CK' : 'MITRE ATT&CK Mapping', formatMitreTags(detail.mitre_attack || detail.mitreTags), true)}
                     ${scanDetailRow('User Advisory', `<pre>${escapeHtml(displayValue(detail.user_advisory || detail.userAdvisory))}</pre>`, true)}
                 </div>
