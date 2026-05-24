@@ -3178,7 +3178,7 @@ try {
                 document.getElementById('resultUrl').href = detail.url || '#';
                 document.getElementById('resultUrl').textContent = detail.url || '-';
                 document.getElementById('llmSummary').textContent = String(detail.display_status || '').toLowerCase().includes('potentially suspicious')
-                    ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
+                    ? 'This URL shows suspicious characteristics, but the current evidence does not confirm phishing. Treat it as medium risk until the source and destination are verified, especially if the page asks for login, payment, account update, or verification details. Do not enter passwords, OTPs, banking information, or personal data until legitimacy is confirmed. Report the URL to IT/security if it came from an untrusted email, chat, or message.'
                     : (detail.llm_summary || 'No incident summary available.');
                 document.getElementById('analysisDetails').textContent = JSON.stringify(detail.features || {}, null, 2);
                 document.getElementById('analyzedTime').textContent = formatAppDateTime(detail.analyzed_at);
@@ -3837,17 +3837,21 @@ try {
                     const fallbackIncidentSummary = () => {
                         const verdict = String(result.display_status || result.overall?.display_verdict || result.overall?.verdict || result.overall?.status || detection.display_verdict || detection.final_verdict || 'unknown').replaceAll('_', ' ').toLowerCase();
                         const risk = String(result.overall?.risk_level || detection.risk_level || 'unknown').toLowerCase();
+                        const confidenceText = `${confidence.toFixed(2)}%`;
                         if (verdict.includes('potentially suspicious')) {
-                            return 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.';
+                            return `This URL shows suspicious characteristics, but the current evidence does not confirm phishing. ShieldURL assessed it as ${risk || 'medium'} risk with a phishing probability of ${confidenceText}, so users should treat the page cautiously until the destination is verified. Do not enter passwords, OTPs, banking information, or personal data on the page. If the link came from email, chat, or another untrusted source, report it to IT/security for review.`;
                         }
-                        return `The submitted URL was classified as ${verdict} with ${risk} risk based on the supplied scan context. ${verdictPolicyText(verdict)}`;
+                        if (verdict.includes('phishing')) {
+                            return `This URL was classified as phishing and should not be used for login, payment, account update, or verification activity. ShieldURL assessed it as ${risk || 'high'} risk with a phishing probability of ${confidenceText}, which means the page may attempt to deceive users into submitting sensitive information. Stop interacting with the page, report the URL to IT/security, and reset affected credentials only if information was entered. Monitoring should focus on suspicious login attempts, password reset messages, and MFA prompts after any interaction.`;
+                        }
+                        return `The submitted URL was classified as ${verdict} with ${risk || 'low'} risk based on the supplied scan context. ShieldURL did not identify major phishing indicators, and the phishing probability is ${confidenceText}. No immediate incident response action is required unless a user notices unexpected redirects, login prompts, or requests for sensitive information. Continue normal browsing practices and verify unexpected links before entering credentials or personal data.`;
                     };
                     const fallbackUserAdvisory = 'Review the URL carefully before interacting with it. Verify the destination before entering login details, OTP, banking information, or personal data.';
 
                     const potentiallySuspiciousDisplay = String(result.display_status || result.overall?.display_verdict || detection.display_verdict || '').toLowerCase().includes('potentially suspicious');
                     const verdictMode = potentiallySuspiciousDisplay ? 'suspicious' : (String(result.status || detection.final_verdict || '').toLowerCase() === 'phishing' ? 'phishing' : 'safe');
                     const incidentSummary = potentiallySuspiciousDisplay
-                        ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
+                        ? fallbackIncidentSummary()
                         : (pickFirst(
                         llm.incident_summary,
                         llm.executive_summary,
@@ -4025,7 +4029,7 @@ try {
                                 if (!reportResult.success || !Object.keys(generated).length) return;
                                 const stillPotentiallySuspicious = String(displayStatusText).toLowerCase().includes('potentially suspicious');
                                 document.getElementById('llmSummary').textContent = stillPotentiallySuspicious
-                                    ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
+                                    ? fallbackIncidentSummary()
                                     : (generated.incident_summary || 'AI report is ready.');
                                 const generatedContainment = collectList(generated.containment_actions);
                                 const generatedEradication = collectList(generated.eradication_recovery_actions);

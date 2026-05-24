@@ -308,10 +308,10 @@ def _incident_summary_needs_fallback(summary: str, scan_url: str = "") -> bool:
         return True
 
     sentences = [s.strip() for s in re.split(r'[.!?]+', summary) if s.strip()]
-    if len(sentences) != 2:
+    if len(sentences) < 3 or len(sentences) > 4:
         return True
 
-    if len(summary.strip().split()) < 20:
+    if len(summary.strip().split()) < 45:
         return True
 
     required_terms = [
@@ -381,18 +381,22 @@ def _fallback_incident_summary(scan_context: dict[str, Any]) -> str:
         verdict_text = display_verdict or verdict or "potentially suspicious"
         if _is_potentially_suspicious(scan_context):
             return (
-                "This URL shows suspicious characteristics, but it is not confirmed phishing. "
-                "Users should verify the website carefully before entering passwords, OTPs, or sensitive information."
+                f"This URL shows suspicious characteristics and is assessed as {risk or 'medium'} risk with {confidence_text} confidence, but the current evidence does not confirm phishing. "
+                "The page should be treated cautiously because suspicious URL patterns can still lead users to fake login, payment, account update, or verification flows. "
+                "Exposure depends on user interaction; risk increases if passwords, OTPs, banking information, or personal data are entered. "
+                "Verify the destination through an official source before interacting and report the link to IT/security if it came from an untrusted message."
             )
         return (
-            f"The submitted URL was classified as {verdict_text} with {risk or 'medium'} risk and {confidence_text} confidence based on URL indicators "
-            "such as obfuscation, abnormal domain structure, and missing HTTPS trust signals. "
-            "The model threshold was met, so the final detection result remains phishing while the risk level shows response severity. "
-            "These indicators suggest possible user deception or credential exposure risk if the link is opened."
+            f"The submitted URL was classified as {verdict_text} with {risk or 'high'} risk and {confidence_text} confidence based on the available URL signals. "
+            "This means ShieldURL detected enough phishing indicators to treat the page as unsafe, especially if it asks for login credentials, OTPs, banking information, or personal data. "
+            "User exposure may have occurred only if someone opened the page and submitted sensitive information. "
+            "Stop interacting with the page, report it to IT/security, and prioritize account monitoring or credential reset when data entry occurred."
         )
     return (
         f"The submitted URL was reviewed with a {risk or 'low'} risk assessment and {confidence_text} confidence from the supplied scan context. "
-        "No immediate phishing threat was identified, but standard monitoring and user caution remain appropriate."
+        "No major phishing indicators were detected, so no immediate incident response action is required. "
+        "Users should still confirm unexpected links before entering passwords, OTPs, banking information, or personal data. "
+        "Continue normal browsing practices and monitor only if the page later redirects unexpectedly or requests sensitive information."
     )
 
 
@@ -482,7 +486,7 @@ def _apply_post_processing(report: dict[str, Any], scan_context: dict[str, Any])
     if _incident_summary_needs_fallback(summary, str(scan_context.get("url", ""))):
         report["incident_summary"] = _fallback_incident_summary(scan_context)
     else:
-        report["incident_summary"] = _truncate_sentences(summary, 2)
+        report["incident_summary"] = _truncate_sentences(summary, 4)
 
     advisory = report.get("user_advisory", "")
     if _user_advisory_needs_fallback(advisory):
@@ -539,7 +543,7 @@ def _build_prompt(scan_context: dict[str, Any]) -> str:
             "Use verdict-specific wording: SAFE says no major phishing indicators were identified; SUSPICIOUS says warning signs were found below the phishing threshold; PHISHING says the model threshold was met and risk/confidence determine severity.",
             "Use simple language for non-technical office staff.",
             "If display_verdict is potentially suspicious, use that wording instead of confirmed phishing language. If verdict is phishing, do not relabel it as suspicious.",
-            "incident_summary must be 1-2 analytical sentences, never a title.",
+            "incident_summary must be 3-4 analytical sentences, never a title.",
             "For phishing or suspicious URLs, explain what was detected, why it is suspicious, and likely impact.",
             "containment_actions max 2 items.",
             "eradication_recovery_actions max 2 items.",
@@ -662,9 +666,15 @@ def fallback_llm_report(
     if risky:
         if _is_potentially_suspicious(context):
             report["incident_summary"] = (
-                "The URL was accessed and contains suspicious indicators. Exposure is possible only if sensitive information was entered."
+                "The URL was accessed and contains suspicious indicators, but the current evidence does not confirm phishing. "
+                "Exposure depends on what happened after access; risk increases if passwords, OTPs, banking information, or personal data were entered. "
+                "Stop interacting with the page and verify the destination through an official source before continuing. "
+                "Report the link to IT/security if it came from an untrusted message or if any sensitive information was submitted."
                 if clicked_yes else
-                "The URL was not accessed, but it contains suspicious indicators. Avoid opening it until verified."
+                "The URL was not accessed, but it contains suspicious indicators and should be treated as medium risk until verified. "
+                "Suspicious pages can still lead to fake login, payment, account update, or verification flows. "
+                "Do not open the link or enter sensitive information until the sender and destination are confirmed legitimate. "
+                "Ask IT/security to review the URL if it was received through email, chat, or another untrusted source."
             )
             report["containment_actions"] = [
                 "Stop interacting with the page." if clicked_yes else "Do not open the link.",
@@ -684,9 +694,15 @@ def fallback_llm_report(
             report["error"] = str(error_message or "LLM timeout or unavailable")
             return report
         report["incident_summary"] = (
-            "The URL was accessed and classified as phishing. User exposure may have occurred if any sensitive information was entered."
+            "The URL was accessed and classified as phishing by ShieldURL. "
+            "User exposure may have occurred if credentials, OTPs, banking information, or personal data were entered after opening the page. "
+            "Stop using the website immediately, report the incident to IT/security, and reset affected credentials when data entry occurred. "
+            "Monitor affected accounts for suspicious login attempts, password reset messages, and unexpected MFA prompts."
             if clicked_yes else
-            "The URL was classified as phishing, but the user did not access it. The risk is reduced because no interaction occurred."
+            "The URL was classified as phishing, but the user did not access it, so direct exposure is currently reduced. "
+            "The link should still be treated as high risk because it may imitate a trusted service or redirect users to a deceptive login page. "
+            "Do not open the URL, report it to IT/security, and remove or ignore the message containing the link. "
+            "Credential reset is not required unless someone later interacts with the page or submits sensitive information."
         )
         report["containment_actions"] = [
             "Stop using the website immediately." if clicked_yes else "Do not open the URL.",
@@ -706,9 +722,15 @@ def fallback_llm_report(
         report["analyst_notes"] = "LLM generation timed out or was unavailable; fallback phishing response guidance was returned."
     else:
         report["incident_summary"] = (
-            "The URL was accessed, but no major phishing indicators were detected. No immediate action is required."
+            "The URL was accessed and no major phishing indicators were detected during analysis. "
+            "The current risk is low, so no immediate incident response action is required. "
+            "Users should still be cautious with unexpected login prompts, payment requests, or pages asking for sensitive information. "
+            "Continue normal browsing practices and report the page only if it later behaves suspiciously."
             if clicked_yes else
-            "The URL was not accessed and no major phishing indicators were detected."
+            "The URL was not accessed and no major phishing indicators were detected during analysis. "
+            "The current risk is low, so no credential reset or escalation is required. "
+            "Users should still verify unexpected links before entering passwords, OTPs, banking information, or personal data. "
+            "Continue safe browsing practices and monitor only if the page is later opened or behaves unexpectedly."
         )
         report["containment_actions"] = []
         report["eradication_recovery_actions"] = []

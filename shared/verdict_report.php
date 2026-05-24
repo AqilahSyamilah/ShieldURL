@@ -172,6 +172,35 @@ function shield_clicked_no($clicked)
     return shield_interaction_status($clicked) === 'Not accessed by user';
 }
 
+function shield_incident_summary($category, $clicked, $confidence, $url = '')
+{
+    $clickedYes = shield_clicked_yes($clicked);
+    $clickedNo = shield_clicked_no($clicked);
+    $target = shield_text($url) !== '' ? 'The submitted URL' : 'This URL';
+
+    if ($category === 'safe') {
+        if ($clickedYes) {
+            return $target . ' was accessed and the scan did not identify major phishing indicators. The current risk is low with a phishing probability of ' . $confidence . ', so no immediate incident response action is required. Users should still avoid entering passwords, OTPs, banking details, or personal information on unexpected pages unless the destination is known and trusted.';
+        }
+        return $target . ' was assessed as low risk and no major phishing indicators were detected during analysis. The displayed phishing probability is ' . $confidence . ', which is below the response threshold used by ShieldURL. No credential reset or escalation is required unless a user later interacts with the page or notices suspicious behavior.';
+    }
+
+    if ($category === 'suspicious') {
+        if ($clickedYes) {
+            return $target . ' was accessed and the scan found suspicious characteristics, but the evidence does not confirm phishing. Exposure depends on what the user did after opening the page; risk increases if passwords, OTPs, banking information, or personal data were entered. Stop interacting with the page, verify the destination through an official source, and reset credentials only if sensitive information was submitted.';
+        }
+        return $target . ' contains suspicious characteristics, but the current evidence does not confirm it as phishing. Treat the link as medium risk until the source and destination are verified, especially if it leads to a login, payment, account update, or verification page. Do not enter sensitive information and ask IT/security to review the URL if it was received through email, chat, or another untrusted channel.';
+    }
+
+    if ($clickedYes) {
+        return $target . ' was accessed and classified as phishing by ShieldURL. User exposure may have occurred if login credentials, OTPs, banking information, or personal data were entered on the page after access. Stop using the website immediately, report the incident to IT/security, and reset affected credentials if any sensitive information was submitted. The priority should be account protection, monitoring for suspicious login activity, and preventing other users from opening the same URL.';
+    }
+
+    return $clickedNo
+        ? $target . ' was classified as phishing, but the user did not access it, so direct exposure is currently reduced. The link should still be treated as high risk because it may be designed to steal credentials, imitate a trusted service, or redirect users to a deceptive login page. Do not open the URL, report it to IT/security, and remove or ignore the message containing the link. Credential reset is not required unless someone later interacts with the page or enters sensitive information.'
+        : $target . ' was classified as phishing and should not be opened or used. The page may attempt to collect credentials, OTPs, banking information, or other sensitive data through a deceptive login or verification flow. Report the URL to IT/security, avoid sharing it with other users, and only reset credentials if interaction or data entry occurred.';
+}
+
 function shield_user_report_content($category, $clicked, $confidence)
 {
     $clickedYes = shield_clicked_yes($clicked);
@@ -180,7 +209,7 @@ function shield_user_report_content($category, $clicked, $confidence)
     if ($category === 'safe') {
         if ($clickedYes) {
             return [
-                'summary' => 'The URL was accessed, but no major phishing indicators were detected. No immediate action is required.',
+                'summary' => shield_incident_summary('safe', $clicked, $confidence),
                 'actions' => [
                     'Continue normal browsing.',
                     'Be cautious before entering sensitive information.',
@@ -190,9 +219,7 @@ function shield_user_report_content($category, $clicked, $confidence)
             ];
         }
         return [
-            'summary' => $clickedNo
-                ? 'The URL was not accessed and no major phishing indicators were detected.'
-                : 'No major phishing indicators were detected. The scan shows low phishing probability at ' . $confidence . '.',
+            'summary' => shield_incident_summary('safe', $clicked, $confidence),
             'actions' => [
                 'No action required.',
                 'Continue safe browsing practices.',
@@ -204,7 +231,7 @@ function shield_user_report_content($category, $clicked, $confidence)
     if ($category === 'suspicious') {
         if ($clickedYes) {
             return [
-                'summary' => 'The URL was accessed and contains suspicious indicators. Exposure is possible only if sensitive information was entered.',
+                'summary' => shield_incident_summary('suspicious', $clicked, $confidence),
                 'actions' => [
                     'Stop interacting with the page.',
                     'Do not enter passwords, OTPs, banking information, or personal data.',
@@ -219,9 +246,7 @@ function shield_user_report_content($category, $clicked, $confidence)
             ];
         }
         return [
-            'summary' => $clickedNo
-                ? 'The URL was not accessed, but it contains suspicious indicators. Avoid opening it until verified.'
-                : 'The URL contains suspicious indicators. Avoid opening it until verified.',
+            'summary' => shield_incident_summary('suspicious', $clicked, $confidence),
             'actions' => [
                 'Do not open the link.',
                 'Verify the sender/source.',
@@ -238,7 +263,7 @@ function shield_user_report_content($category, $clicked, $confidence)
 
     if ($clickedYes) {
         return [
-            'summary' => 'The URL was accessed and classified as phishing. User exposure may have occurred if login credentials, OTPs, banking information, or personal data were entered.',
+            'summary' => shield_incident_summary('phishing', $clicked, $confidence),
             'actions' => [
                 'Stop using the website immediately.',
                 'Do not enter further information.',
@@ -261,9 +286,7 @@ function shield_user_report_content($category, $clicked, $confidence)
         ];
     }
     return [
-        'summary' => $clickedNo
-            ? 'The URL was classified as phishing, but the user did not access it. The risk is reduced because no interaction occurred.'
-            : 'The URL was classified as phishing. Do not access it or enter any information.',
+        'summary' => shield_incident_summary('phishing', $clicked, $confidence),
         'actions' => [
             'Do not open the URL.',
             'Delete or ignore the message containing the link.',
@@ -332,7 +355,7 @@ function shield_build_verdict_report($context, $existingReport = [], $audience =
         $report['mitre_attack_mapping'] = shield_mitre_tag($category);
         $report['analyst_notes'] = 'User view uses simple action-based guidance and omits SOC-only NIST/MITRE details.';
     } elseif ($category === 'safe') {
-        $report['incident_summary'] = 'No major phishing indicators were detected for this URL. The scan assessed it as low risk with a phishing probability of ' . $confidence . '.';
+        $report['incident_summary'] = shield_incident_summary('safe', $clicked, $confidence, $url);
         $report['detection_analysis'] = [
             'No major phishing indicators were detected in the current scan.',
             'The URL is assessed as low risk based on available URL signals.',
@@ -350,9 +373,7 @@ function shield_build_verdict_report($context, $existingReport = [], $audience =
         $report['mitre_attack_mapping'] = [];
         $report['analyst_notes'] = 'MITRE ATT&CK: Not Applicable. NIST actions: Not Required. No containment or recovery actions required.';
     } elseif ($category === 'suspicious') {
-        $report['incident_summary'] = shield_clicked_yes($clicked)
-            ? 'The URL was accessed and contains suspicious indicators. Exposure is possible only if sensitive information was entered.'
-            : 'The URL contains suspicious indicators, but it is not confirmed phishing. Verify legitimacy before user interaction.';
+        $report['incident_summary'] = shield_incident_summary('suspicious', $clicked, $confidence, $url);
         $report['detection_analysis'] = [
             'Suspicious signals require review before user interaction.',
             'Monitor for unexpected redirects, fake login prompts, or requests for sensitive information.',
@@ -379,9 +400,7 @@ function shield_build_verdict_report($context, $existingReport = [], $audience =
         $report['mitre_attack_mapping'] = shield_mitre_tag('suspicious', $report['mitre_attack_mapping'] ?? []);
         $report['analyst_notes'] = 'Suspicious verdict output uses cautious language and does not treat the URL as confirmed phishing.';
     } else {
-        $report['incident_summary'] = shield_clicked_yes($clicked)
-            ? 'The URL was accessed and classified as phishing. User exposure may have occurred if login credentials, OTPs, banking information, or personal data were entered.'
-            : 'The URL was classified as phishing, but the user did not access it. The risk is reduced because no interaction occurred.';
+        $report['incident_summary'] = shield_incident_summary('phishing', $clicked, $confidence, $url);
         $report['detection_analysis'] = [
             'Possible credential harvesting.',
             'Possible brand impersonation.',
