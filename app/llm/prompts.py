@@ -21,7 +21,7 @@ Risk Level: {risk}
 Return ONLY valid JSON in this exact format:
 
 {{
-  "incident_summary": "3-4 analyst-style sentences explaining the displayed verdict, user impact, security risk if someone interacts with the URL, and the immediate next step. Do not claim compromise already happened.",
+  "incident_summary": "4 professional analyst-style sentences covering: what was detected, how the URL may behave, possible attack objective, possible impact, user exposure risk, organizational impact, and urgency/severity. Do not claim compromise already happened.",
   "containment_actions": [
     "Review the URL carefully before allowing user interaction.",
     "Verify the destination and source of the link before users enter credentials or sensitive information."
@@ -49,7 +49,7 @@ MITRE rule:
 
 Incident summary quality rules:
 - Use clear language suitable for office staff.
-- Focus on observed risk, user impact, and next steps.
+- Focus on what was detected, URL behavior, possible attack objective, possible impact, user exposure risk, organizational impact, urgency/severity, and next steps.
 - Do not say credentials were stolen, accounts were accessed, fraud occurred, or data was exposed unless evidence is provided.
 - Do not modify, reinterpret, override, or recalculate the authoritative verdict, risk level, or confidence score.
 - For POTENTIALLY SUSPICIOUS, recommend cautious review and user verification, not automatic blocking unless organization policy requires it.

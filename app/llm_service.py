@@ -381,22 +381,22 @@ def _fallback_incident_summary(scan_context: dict[str, Any]) -> str:
         verdict_text = display_verdict or verdict or "potentially suspicious"
         if _is_potentially_suspicious(scan_context):
             return (
-                f"This URL shows suspicious characteristics and is assessed as {risk or 'medium'} risk with {confidence_text} confidence, but the current evidence does not confirm phishing. "
-                "The page should be treated cautiously because suspicious URL patterns can still lead users to fake login, payment, account update, or verification flows. "
-                "Exposure depends on user interaction; risk increases if passwords, OTPs, banking information, or personal data are entered. "
-                "Verify the destination through an official source before interacting and report the link to IT/security if it came from an untrusted message."
+                f"ShieldURL detected suspicious URL characteristics and assessed the link as {risk or 'medium'} risk with {confidence_text} confidence, but the current evidence does not confirm phishing. "
+                "The URL may behave like a cautionary link by leading users toward an unexpected login, payment, account update, or verification page, with a possible attack objective of collecting credentials or sensitive information. "
+                "User exposure risk depends on whether anyone opened the page and submitted data, while organizational impact could become moderate if the link is distributed through email, chat, or ticket workflows. "
+                "Urgency is medium: verify the source and destination before interaction, do not enter sensitive information, and report the URL to IT/security if it came from an untrusted message."
             )
         return (
-            f"The submitted URL was classified as {verdict_text} with {risk or 'high'} risk and {confidence_text} confidence based on the available URL signals. "
-            "This means ShieldURL detected enough phishing indicators to treat the page as unsafe, especially if it asks for login credentials, OTPs, banking information, or personal data. "
-            "User exposure may have occurred only if someone opened the page and submitted sensitive information. "
-            "Stop interacting with the page, report it to IT/security, and prioritize account monitoring or credential reset when data entry occurred."
+            f"ShieldURL classified the submitted URL as {verdict_text} and assessed it as {risk or 'high'} risk with {confidence_text} confidence based on the available URL signals. "
+            "The URL may behave as a deceptive login, payment, account update, or verification page, with the likely attack objective of stealing credentials, OTPs, banking information, or personal data. "
+            "User exposure may occur if the page is opened and sensitive information is submitted, while organizational impact could include account compromise, unauthorized access, data exposure, or wider phishing spread. "
+            "Urgency is high: stop interacting with the page, report it to IT/security, reset affected credentials when data entry occurred, and monitor for suspicious login or MFA activity."
         )
     return (
-        f"The submitted URL was reviewed with a {risk or 'low'} risk assessment and {confidence_text} confidence from the supplied scan context. "
-        "No major phishing indicators were detected, so no immediate incident response action is required. "
-        "Users should still confirm unexpected links before entering passwords, OTPs, banking information, or personal data. "
-        "Continue normal browsing practices and monitor only if the page later redirects unexpectedly or requests sensitive information."
+        f"ShieldURL reviewed the submitted URL with a {risk or 'low'} risk assessment and {confidence_text} confidence from the supplied scan context. "
+        "The scan did not detect URL behavior strongly associated with credential harvesting, brand impersonation, malicious redirection, or deceptive verification flows. "
+        "User exposure risk and organizational impact are currently low unless the page later redirects unexpectedly or requests sensitive information. "
+        "Urgency is low: no immediate incident response action is required, but users should continue verifying unexpected links before entering credentials or personal data."
     )
 
 
@@ -543,8 +543,8 @@ def _build_prompt(scan_context: dict[str, Any]) -> str:
             "Use verdict-specific wording: SAFE says no major phishing indicators were identified; SUSPICIOUS says warning signs were found below the phishing threshold; PHISHING says the model threshold was met and risk/confidence determine severity.",
             "Use simple language for non-technical office staff.",
             "If display_verdict is potentially suspicious, use that wording instead of confirmed phishing language. If verdict is phishing, do not relabel it as suspicious.",
-            "incident_summary must be 3-4 analytical sentences, never a title.",
-            "For phishing or suspicious URLs, explain what was detected, why it is suspicious, and likely impact.",
+            "incident_summary must be 4 professional analyst-style sentences, never a title.",
+            "For phishing or suspicious URLs, explain what was detected, how the URL may behave, possible attack objective, possible impact, user exposure risk, organizational impact, and urgency/severity.",
             "containment_actions max 2 items.",
             "eradication_recovery_actions max 2 items.",
             "post_incident_recommendations max 2 items.",
@@ -666,15 +666,15 @@ def fallback_llm_report(
     if risky:
         if _is_potentially_suspicious(context):
             report["incident_summary"] = (
-                "The URL was accessed and contains suspicious indicators, but the current evidence does not confirm phishing. "
-                "Exposure depends on what happened after access; risk increases if passwords, OTPs, banking information, or personal data were entered. "
-                "Stop interacting with the page and verify the destination through an official source before continuing. "
-                "Report the link to IT/security if it came from an untrusted message or if any sensitive information was submitted."
+                "ShieldURL detected suspicious URL characteristics after the URL was accessed, but the current evidence does not confirm phishing. "
+                "The URL may behave like a cautionary link by leading users toward an unexpected login, payment, account update, or verification page, with a possible attack objective of collecting credentials or sensitive information. "
+                "User exposure risk depends on what happened after access and becomes significant if passwords, OTPs, banking information, or personal data were entered; organizational impact could become moderate if the link spreads internally. "
+                "Urgency is medium: stop interacting with the page, verify the destination through an official source, and report the link to IT/security if any sensitive information was submitted."
                 if clicked_yes else
-                "The URL was not accessed, but it contains suspicious indicators and should be treated as medium risk until verified. "
-                "Suspicious pages can still lead to fake login, payment, account update, or verification flows. "
-                "Do not open the link or enter sensitive information until the sender and destination are confirmed legitimate. "
-                "Ask IT/security to review the URL if it was received through email, chat, or another untrusted source."
+                "ShieldURL detected suspicious URL characteristics, but the user did not access the link and the current evidence does not confirm phishing. "
+                "The URL may behave like a cautionary link by leading users toward a fake login, payment, account update, or verification flow, with a possible attack objective of collecting credentials or sensitive information. "
+                "User exposure risk is currently reduced, but organizational impact could become moderate if the link is distributed through email, chat, or ticket workflows. "
+                "Urgency is medium: do not open the link, do not enter sensitive information, and ask IT/security to review it before interaction."
             )
             report["containment_actions"] = [
                 "Stop interacting with the page." if clicked_yes else "Do not open the link.",
@@ -694,15 +694,15 @@ def fallback_llm_report(
             report["error"] = str(error_message or "LLM timeout or unavailable")
             return report
         report["incident_summary"] = (
-            "The URL was accessed and classified as phishing by ShieldURL. "
-            "User exposure may have occurred if credentials, OTPs, banking information, or personal data were entered after opening the page. "
-            "Stop using the website immediately, report the incident to IT/security, and reset affected credentials when data entry occurred. "
-            "Monitor affected accounts for suspicious login attempts, password reset messages, and unexpected MFA prompts."
+            "ShieldURL classified the accessed URL as phishing after detecting high-risk URL signals consistent with a deceptive or malicious destination. "
+            "The URL may behave as a fake login, payment, account update, or verification page, with the likely attack objective of stealing credentials, OTPs, banking information, or personal data. "
+            "User exposure may have occurred if sensitive information was entered, and organizational impact could include account compromise, unauthorized access, data exposure, or wider phishing spread. "
+            "Urgency is high: stop using the website, report the incident to IT/security, reset affected credentials when data entry occurred, and monitor for suspicious login or MFA activity."
             if clicked_yes else
-            "The URL was classified as phishing, but the user did not access it, so direct exposure is currently reduced. "
-            "The link should still be treated as high risk because it may imitate a trusted service or redirect users to a deceptive login page. "
-            "Do not open the URL, report it to IT/security, and remove or ignore the message containing the link. "
-            "Credential reset is not required unless someone later interacts with the page or submits sensitive information."
+            "ShieldURL classified the URL as phishing, but the user did not access it, so direct user exposure is currently reduced. "
+            "The URL may behave as a deceptive login, payment, account update, or verification page, with the likely attack objective of stealing credentials, OTPs, banking information, or personal data. "
+            "Organizational impact remains high if the link is delivered to other users, reused in email campaigns, or allowed through internal communication channels. "
+            "Urgency is high for containment: do not open the URL, report it to IT/security, remove or ignore the message containing the link, and reset credentials only if someone later interacts with the page."
         )
         report["containment_actions"] = [
             "Stop using the website immediately." if clicked_yes else "Do not open the URL.",
@@ -722,15 +722,15 @@ def fallback_llm_report(
         report["analyst_notes"] = "LLM generation timed out or was unavailable; fallback phishing response guidance was returned."
     else:
         report["incident_summary"] = (
-            "The URL was accessed and no major phishing indicators were detected during analysis. "
-            "The current risk is low, so no immediate incident response action is required. "
-            "Users should still be cautious with unexpected login prompts, payment requests, or pages asking for sensitive information. "
-            "Continue normal browsing practices and report the page only if it later behaves suspiciously."
+            "ShieldURL did not detect major phishing indicators after the URL was accessed. "
+            "The observed URL behavior does not currently suggest credential harvesting, brand impersonation, malicious redirection, or a deceptive verification flow. "
+            "User exposure risk and organizational impact are low unless the page later redirects unexpectedly or requests sensitive information. "
+            "Urgency is low: no immediate incident response action is required, but users should report the page if it later behaves suspiciously."
             if clicked_yes else
-            "The URL was not accessed and no major phishing indicators were detected during analysis. "
-            "The current risk is low, so no credential reset or escalation is required. "
-            "Users should still verify unexpected links before entering passwords, OTPs, banking information, or personal data. "
-            "Continue safe browsing practices and monitor only if the page is later opened or behaves unexpectedly."
+            "ShieldURL did not detect major phishing indicators and the URL was not accessed. "
+            "The observed URL behavior does not currently suggest credential harvesting, brand impersonation, malicious redirection, or a deceptive verification flow. "
+            "User exposure risk and organizational impact are low because no interaction or data entry was recorded. "
+            "Urgency is low: no credential reset or escalation is required unless the page is later opened or behaves unexpectedly."
         )
         report["containment_actions"] = []
         report["eradication_recovery_actions"] = []
