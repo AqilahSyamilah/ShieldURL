@@ -3,7 +3,19 @@ from langchain_core.output_parsers import JsonOutputParser
 import os
 from .prompts import chat_prompt, incident_prompt
 
-CHAT_LLM_TIMEOUT_SECONDS = 25
+
+def _chat_timeout_seconds() -> int:
+    raw_timeout = os.environ.get("CHAT_TIMEOUT") or os.environ.get("CHAT_LLM_TIMEOUT_SECONDS")
+    if not raw_timeout:
+        return 60
+    try:
+        timeout = int(raw_timeout)
+    except ValueError:
+        return 60
+    return max(1, timeout)
+
+
+CHAT_LLM_TIMEOUT_SECONDS = _chat_timeout_seconds()
 
 OLLAMA_OPTIONS = {
     "num_ctx": 2048,

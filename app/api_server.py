@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import sys
 import time
 import traceback
 from collections import defaultdict, deque
@@ -37,8 +38,41 @@ CHAT_FALLBACK_ANSWER = (
 )
 
 
+def _module_timestamp(path: str) -> str:
+    if not path:
+        return ""
+    try:
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(os.path.getmtime(path)))
+    except OSError:
+        return "unavailable"
+
+
 @app.on_event("startup")
 def warm_ollama():
+    timeout = CHAT_LLM_TIMEOUT_SECONDS
+    chain_module = sys.modules.get(generate_chat_answer.__module__)
+    chain_file = str(getattr(chain_module, "__file__", ""))
+    chain_cache = str(getattr(chain_module, "__cached__", ""))
+
+    logger.info(f"ShieldURL chat timeout: {timeout}")
+    logger.info(
+        "ShieldURL api_server loaded from: %s mtime=%s pycache=%s",
+        __file__,
+        _module_timestamp(__file__),
+        globals().get("__cached__", ""),
+    )
+    logger.info(
+        "ShieldURL llm chain loaded from: %s mtime=%s pycache=%s",
+        chain_file,
+        _module_timestamp(chain_file),
+        chain_cache,
+    )
+    logger.info(
+        "ShieldURL timeout env: CHAT_TIMEOUT=%s CHAT_LLM_TIMEOUT_SECONDS=%s OLLAMA_TIMEOUT=%s",
+        os.environ.get("CHAT_TIMEOUT", ""),
+        os.environ.get("CHAT_LLM_TIMEOUT_SECONDS", ""),
+        os.environ.get("OLLAMA_TIMEOUT", ""),
+    )
     logger.info("chat ollama warmup skipped")
 SENSITIVE_VALUE_PATTERN = re.compile(
     r"(?i)\b(password|passcode|otp|one[-\s]?time code|pin|card number|cvv|token|secret)\b\s*(?:is|=|:)?\s*[\w\-@.]{2,}"
@@ -1542,6 +1576,14 @@ def health():
         "status": "ok",
         "model_path": MODEL_PATH,
         "scan_flow": "app.scan_url.run_scan",
+        "chat_timeout_seconds": CHAT_LLM_TIMEOUT_SECONDS,
+        "api_server_file": __file__,
+        "api_server_mtime": _module_timestamp(__file__),
+        "timeout_env": {
+            "CHAT_TIMEOUT": os.environ.get("CHAT_TIMEOUT", ""),
+            "CHAT_LLM_TIMEOUT_SECONDS": os.environ.get("CHAT_LLM_TIMEOUT_SECONDS", ""),
+            "OLLAMA_TIMEOUT": os.environ.get("OLLAMA_TIMEOUT", ""),
+        },
     }
 
 
