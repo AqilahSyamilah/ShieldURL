@@ -768,6 +768,13 @@ $users_online = $stmt->fetch()['users_online'];
       margin-bottom: 0.65rem;
     }
 
+    .assistant-helper-text {
+      margin: -0.35rem 0 0.75rem;
+      color: #64748b;
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
     .assistant-question-list {
       display: flex;
       gap: 0.55rem;
@@ -814,6 +821,40 @@ $users_online = $stmt->fetch()['users_online'];
       background: #1d4ed8;
       border-color: #1d4ed8;
       color: #ffffff;
+    }
+
+    .assistant-composer {
+      display: flex;
+      gap: 0.6rem;
+      padding: 0.9rem 1rem 1rem;
+      border-top: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+
+    #assistantInput {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0.65rem 0.75rem;
+      font: inherit;
+      font-size: 0.92rem;
+    }
+
+    #assistantInput:focus {
+      outline: 2px solid rgba(37, 99, 235, 0.18);
+      border-color: #2563eb;
+    }
+
+    .assistant-send {
+      border: 1px solid #1d4ed8;
+      background: #1d4ed8;
+      color: #ffffff;
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
     }
 
     .assistant-question-btn:disabled,
@@ -1432,11 +1473,41 @@ $users_online = $stmt->fetch()['users_online'];
       transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease;
     }
 
+    .assistant-panel.is-resizing {
+      transition: none;
+      user-select: none;
+    }
+
     .assistant-column.assistant-open .assistant-panel {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
       transform: translateY(0) scale(1);
+    }
+
+    .assistant-resize-handle {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      width: 26px;
+      height: 26px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      cursor: nwse-resize;
+      z-index: 2;
+    }
+
+    .assistant-resize-handle::before {
+      content: "";
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      width: 12px;
+      height: 12px;
+      border-right: 2px solid #94a3b8;
+      border-bottom: 2px solid #94a3b8;
+      box-shadow: 4px 4px 0 -2px #94a3b8;
     }
 
     .assistant-header {
@@ -2360,6 +2431,69 @@ $users_online = $stmt->fetch()['users_online'];
       }
     }
 
+    function getAssistantSizeLimits() {
+      return {
+        minWidth: Math.min(360, Math.max(280, window.innerWidth - 32)),
+        maxWidth: Math.max(320, window.innerWidth - 32),
+        minHeight: Math.min(420, Math.max(320, window.innerHeight - 48)),
+        maxHeight: Math.max(360, window.innerHeight - 48)
+      };
+    }
+
+    function applyAssistantPanelSize(width, height) {
+      const panel = document.getElementById('assistantPanel');
+      if (!panel) return;
+      const limits = getAssistantSizeLimits();
+      const nextWidth = Math.max(limits.minWidth, Math.min(limits.maxWidth, Number(width) || 720));
+      const nextHeight = Math.max(limits.minHeight, Math.min(limits.maxHeight, Number(height) || window.innerHeight * 0.8));
+      panel.style.width = `${nextWidth}px`;
+      panel.style.height = `${nextHeight}px`;
+      sessionStorage.setItem('shieldurl_assistant_width', String(Math.round(nextWidth)));
+      sessionStorage.setItem('shieldurl_assistant_height', String(Math.round(nextHeight)));
+    }
+
+    function initAssistantResize() {
+      const panel = document.getElementById('assistantPanel');
+      const handle = document.getElementById('assistantResizeHandle');
+      if (!panel || !handle) return;
+
+      const storedWidth = Number(sessionStorage.getItem('shieldurl_assistant_width'));
+      const storedHeight = Number(sessionStorage.getItem('shieldurl_assistant_height'));
+      if (storedWidth || storedHeight) {
+        applyAssistantPanelSize(storedWidth || panel.offsetWidth, storedHeight || panel.offsetHeight);
+      }
+
+      handle.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const startWidth = panel.offsetWidth;
+        const startHeight = panel.offsetHeight;
+        panel.classList.add('is-resizing');
+        handle.setPointerCapture?.(event.pointerId);
+
+        const onMove = (moveEvent) => {
+          applyAssistantPanelSize(
+            startWidth + (startX - moveEvent.clientX),
+            startHeight + (startY - moveEvent.clientY)
+          );
+        };
+        const onUp = () => {
+          panel.classList.remove('is-resizing');
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          window.removeEventListener('pointercancel', onUp);
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+      });
+
+      window.addEventListener('resize', () => {
+        applyAssistantPanelSize(panel.offsetWidth, panel.offsetHeight);
+      });
+    }
+
     function updateAssistantToggleAvailability(hasScanContext) {
       const toggleBtn = document.getElementById('assistantToggleBtn');
       const toggleLabel = document.getElementById('assistantToggleLabel');
@@ -2425,7 +2559,7 @@ $users_online = $stmt->fetch()['users_online'];
     function getAssistantConversation() {
       return Array.from(document.querySelectorAll('#assistantMessages .assistant-message'))
         .filter(item => !item.classList.contains('notice'))
-        .slice(-6)
+        .slice(-2)
         .map(item => ({
           role: item.classList.contains('user') ? 'user' : 'assistant',
           content: item.textContent || ''
@@ -2523,7 +2657,7 @@ $users_online = $stmt->fetch()['users_online'];
       assistantActiveCategory = assistantQuestionSets[category] ? category : 'Scan Analysis Details';
       const title = document.getElementById('assistantQuestionTitle');
       const list = document.getElementById('assistantQuestionList');
-      if (title) title.textContent = assistantActiveCategory;
+      if (title) title.textContent = `${assistantActiveCategory} suggestions`;
       if (!list) return;
       list.innerHTML = '';
       getVisibleAssistantQuestions(assistantActiveCategory).forEach(question => {
@@ -2542,6 +2676,10 @@ $users_online = $stmt->fetch()['users_online'];
       document.querySelectorAll('.assistant-question-btn, .assistant-category-btn').forEach(button => {
         button.disabled = !enabled || assistantIsLoading;
       });
+      const input = document.getElementById('assistantInput');
+      const send = document.querySelector('.assistant-send');
+      if (input) input.disabled = !enabled || assistantIsLoading;
+      if (send) send.disabled = !enabled || assistantIsLoading;
     }
 
     function resetAssistant(scanId, scanContext = null) {
@@ -2551,9 +2689,11 @@ $users_online = $stmt->fetch()['users_online'];
       const messages = document.getElementById('assistantMessages');
       if (messages) {
         messages.innerHTML = '';
-        appendAssistantMessage('assistant', 'Welcome. Choose a category, then select a question about this scan result.');
+        appendAssistantMessage('assistant', hasContext ? 'Ask any question about this scan, phishing risk, or what to do next. The buttons are suggestions.' : 'Please scan a URL first before using the assistant.');
         if (!hasContext) appendAssistantMessage('notice', 'Please scan a URL first before using the assistant.');
       }
+      const input = document.getElementById('assistantInput');
+      if (input) input.value = '';
       assistantActiveCategory = 'Scan Analysis Details';
       renderAssistantQuestions(assistantActiveCategory);
       setAssistantEnabled(hasContext);
@@ -2567,34 +2707,36 @@ $users_online = $stmt->fetch()['users_online'];
         return;
       }
       if (!trimmed) return;
-      if (trimmed.length > 500) {
-        appendAssistantMessage('assistant', 'Please keep questions to 500 characters or fewer.');
+      if (trimmed.length > 800) {
+        appendAssistantMessage('assistant', 'Please keep questions to 800 characters or fewer.');
         return;
       }
 
+      const conversation = getAssistantConversation();
       appendAssistantMessage('user', trimmed);
       assistantIsLoading = true;
       setAssistantEnabled(true);
       const loadingBubble = appendAssistantMessage('assistant', 'ShieldURL Assistant is analyzing the scan context...');
 
       try {
-        const conversation = getAssistantConversation();
         const response = await fetch('../api/chat.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             scan_id: currentScanId,
             message: trimmed,
+            user_question: trimmed,
             assistant_response_style: 'simple',
             scan_context: currentScanContext,
             history: conversation,
             conversation,
+            conversation_history: conversation,
           })
         });
         const result = await parseJsonResponse(response);
-        renderAssistantAnswer(loadingBubble, result.answer || 'Status:\nThe assistant is temporarily unavailable, but the scan result remains valid.\n\nRecommended action:\nPlease follow the displayed recommended actions.');
+        renderAssistantAnswer(loadingBubble, result.answer || 'The assistant is temporarily unavailable, but the scan result remains valid. Follow the displayed recommended actions.');
       } catch (error) {
-        renderAssistantAnswer(loadingBubble, 'Status:\nThe assistant is temporarily unavailable, but the scan result remains valid.\n\nRecommended action:\nPlease follow the displayed recommended actions.');
+        renderAssistantAnswer(loadingBubble, 'The assistant is temporarily unavailable, but the scan result remains valid. Follow the displayed recommended actions.');
       } finally {
         assistantIsLoading = false;
         setAssistantEnabled(Boolean(currentScanContext));
@@ -2613,6 +2755,14 @@ $users_online = $stmt->fetch()['users_online'];
       sendAssistantQuestion(button.dataset.assistantQuestion);
     });
 
+    document.getElementById('assistantComposer')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = document.getElementById('assistantInput');
+      const question = input ? input.value : '';
+      if (input) input.value = '';
+      sendAssistantQuestion(question);
+    });
+
     document.getElementById('assistantToggleBtn')?.addEventListener('click', () => setAssistantPanelOpen(!assistantPanelOpen));
     document.getElementById('assistantCloseBtn')?.addEventListener('click', () => setAssistantPanelOpen(false));
     document.getElementById('assistantOverlay')?.addEventListener('click', () => setAssistantPanelOpen(false));
@@ -2621,6 +2771,7 @@ $users_online = $stmt->fetch()['users_online'];
     });
 
     mountAssistantToViewport();
+    initAssistantResize();
 
     document.getElementById('checkUrlForm').addEventListener('submit', async (event) => {
       event.preventDefault();

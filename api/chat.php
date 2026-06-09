@@ -2,8 +2,8 @@
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 error_reporting(E_ALL);
-ini_set('max_execution_time', '30');
-set_time_limit(30);
+ini_set('max_execution_time', '120');
+set_time_limit(120);
 
 require_once '../config/db.php';
 require_once '../shared/verdict_report.php';
@@ -93,8 +93,8 @@ $question = is_string($rawQuestion) ? trim($rawQuestion) : '';
 if ($question === '') {
     chat_json(['success' => false, 'message' => 'message is required'], 400);
 }
-if (strlen($question) > 500) {
-    chat_json(['success' => false, 'message' => 'user_question must be 500 characters or fewer'], 400);
+if (strlen($question) > 800) {
+    chat_json(['success' => false, 'message' => 'user_question must be 800 characters or fewer'], 400);
 }
 
 $scanId = isset($data['scan_id']) ? intval($data['scan_id']) : 0;
@@ -102,6 +102,24 @@ $clientScanContext = isset($data['scan_context']) && is_array($data['scan_contex
 $assistantStyle = isset($data['assistant_response_style']) ? strtolower(trim(strval($data['assistant_response_style']))) : 'simple';
 if (!in_array($assistantStyle, ['simple', 'technical', 'executive'], true)) {
     $assistantStyle = 'simple';
+}
+$rawHistory = $data['conversation_history'] ?? ($data['conversation'] ?? ($data['history'] ?? []));
+$conversationHistory = [];
+if (is_array($rawHistory)) {
+    foreach (array_slice($rawHistory, -2) as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $role = strtolower(trim(strval($item['role'] ?? '')));
+        $content = trim(strval($item['content'] ?? ''));
+        if (!in_array($role, ['user', 'assistant'], true) || $content === '') {
+            continue;
+        }
+        $conversationHistory[] = [
+            'role' => $role,
+            'content' => substr(chat_redact_question($content), 0, 240),
+        ];
+    }
 }
 
 if (chat_rate_limited()) {
@@ -183,8 +201,9 @@ $payload = json_encode([
     'question' => $question,
     'assistant_response_style' => $assistantStyle,
     'scan_context' => $scanContext,
-    'history' => array_slice($data['history'] ?? ($data['conversation'] ?? []), -6),
-    'conversation' => array_slice($data['conversation'] ?? ($data['history'] ?? []), -6),
+    'history' => $conversationHistory,
+    'conversation' => $conversationHistory,
+    'conversation_history' => $conversationHistory,
 ]);
 
 if (!function_exists('curl_init')) {
@@ -203,7 +222,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Accept: application/json']);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-curl_setopt($ch, CURLOPT_TIMEOUT, 23);
+curl_setopt($ch, CURLOPT_TIMEOUT, 35);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 
 $response = curl_exec($ch);

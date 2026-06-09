@@ -183,7 +183,8 @@
                                 </div>
                                 <div class="assistant-body">
                                     <div class="assistant-question-panel" id="assistantQuestionPanel" aria-live="polite">
-                                        <div class="assistant-question-title" id="assistantQuestionTitle">Select a category</div>
+                                        <div class="assistant-question-title" id="assistantQuestionTitle">Suggested questions</div>
+                                        <p class="assistant-helper-text">Ask any question about this scan, phishing risk, or what to do next.</p>
                                         <div class="assistant-question-list" id="assistantQuestionList"></div>
                                     </div>
                                     <div class="assistant-messages" id="assistantMessages">
@@ -191,6 +192,11 @@
                                     </div>
                                 </div>
                                 <div class="assistant-category-bar" id="assistantCategoryBar" aria-label="Assistant question categories"></div>
+                                <form class="assistant-composer" id="assistantComposer">
+                                    <input type="text" id="assistantInput" maxlength="800" placeholder="Ask anything about this URL scan..." autocomplete="off">
+                                    <button type="submit" class="assistant-send">Send</button>
+                                </form>
+                                <button type="button" class="assistant-resize-handle" id="assistantResizeHandle" aria-label="Resize ShieldURL Assistant" title="Resize assistant"></button>
                             </div>
                         </div>
                         <button id="assistantToggleBtn" type="button" class="assistant-toggle-btn floating-assistant-icon" style="display: none;" title="Open ShieldURL Assistant" aria-label="Open ShieldURL Assistant">

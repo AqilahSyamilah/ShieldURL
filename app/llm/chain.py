@@ -3,6 +3,8 @@ from langchain_core.output_parsers import JsonOutputParser
 import os
 from .prompts import chat_prompt, incident_prompt
 
+CHAT_LLM_TIMEOUT_SECONDS = 25
+
 OLLAMA_OPTIONS = {
     "num_ctx": 2048,
     "num_predict": 350,
@@ -14,13 +16,14 @@ OLLAMA_OPTIONS = {
 
 CHAT_OLLAMA_OPTIONS = {
     "num_ctx": 1024,
-    "num_predict": 180,
+    "num_predict": 96,
     "temperature": 0.2,
     "top_p": 0.8,
     "repeat_penalty": 1.1,
     "num_thread": os.cpu_count() or 4,
-    "sync_client_kwargs": {"timeout": 22},
-    "async_client_kwargs": {"timeout": 22},
+    "keep_alive": "10m",
+    "sync_client_kwargs": {"timeout": CHAT_LLM_TIMEOUT_SECONDS},
+    "async_client_kwargs": {"timeout": CHAT_LLM_TIMEOUT_SECONDS},
 }
 
 llm = OllamaLLM(model="llama3.2:latest", **OLLAMA_OPTIONS)
@@ -179,32 +182,40 @@ def _compact_chat_context(scan_context):
     if not isinstance(indicators, list):
         indicators = []
 
+    confidence = detection.get("phishing_probability") or detection.get("confidence_score") or scan_context.get("phishing_probability") or scan_context.get("confidence_score") or ""
+    risk_level = detection.get("risk_level") or scan_context.get("risk_level") or ""
+    mitre = scan_context.get("mitre_attack", [])
+    if isinstance(mitre, list):
+        mitre_technique = str(mitre[0]).strip() if mitre else ""
+    else:
+        mitre_technique = str(mitre or "").strip()
+    containment = nist_actions.get("containment", []) if isinstance(nist_actions.get("containment"), list) else []
+    recovery = nist_actions.get("eradication_recovery", []) if isinstance(nist_actions.get("eradication_recovery"), list) else []
+    recommended = [str(item).strip() for item in [*containment[:1], *recovery[:1]] if str(item).strip()]
     return {
-        "url": scan_context.get("checked_url") or scan_context.get("url") or "",
+        "checked_url": scan_context.get("checked_url") or scan_context.get("url") or "",
         "verdict": detection.get("display_verdict") or detection.get("final_verdict") or scan_context.get("final_verdict") or "",
-        "confidence": detection.get("phishing_probability") or detection.get("confidence_score") or scan_context.get("phishing_probability") or scan_context.get("confidence_score") or "",
-        "risk": detection.get("risk_level") or scan_context.get("risk_level") or "",
-        "suspicious_indicators": [str(item).strip() for item in indicators if str(item).strip()][:3],
-        "mitre_attack": scan_context.get("mitre_attack", [])[:1] if isinstance(scan_context.get("mitre_attack"), list) else [],
-        "recommended_actions": {
-            "containment": nist_actions.get("containment", [])[:2] if isinstance(nist_actions.get("containment"), list) else [],
-            "recovery": nist_actions.get("eradication_recovery", [])[:2] if isinstance(nist_actions.get("eradication_recovery"), list) else [],
-        },
-        "scope": scan_context.get("assistant_scope", ""),
+        "confidence": confidence,
+        "risk_level": risk_level,
+        "indicators": [str(item).strip() for item in indicators if str(item).strip()][:3],
+        "MITRE": mitre_technique,
+        "recommended_actions": recommended,
     }
 
 
 def generate_chat_answer(user_question, scan_context, assistant_response_style="simple", conversation=None):
     recent_conversation = []
     if isinstance(conversation, list):
-        recent_conversation = conversation[-2:]
-    context = {
-        "scan_context": _compact_chat_context(scan_context),
-        "recent_conversation": recent_conversation,
-        "response_length": "Use at most 5 short bullet points.",
-    }
+        for item in conversation[-2:]:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role", "")).strip().lower()
+            content = str(item.get("content", "")).strip()
+            if role in {"user", "assistant"} and content:
+                recent_conversation.append({"role": role, "content": content[:240]})
     return str(chat_chain.invoke({
         "user_question": user_question,
         "assistant_response_style": assistant_response_style,
-        "scan_context": context,
+        "scan_context": _compact_chat_context(scan_context),
+        "conversation_history": recent_conversation,
     })).strip()

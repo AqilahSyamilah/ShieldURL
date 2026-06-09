@@ -15,12 +15,12 @@ try:
     from .features import MODEL_PATH
     from .scan_url import run_scan
     from .llm_service import fallback_llm_report
-    from .llm.chain import generate_chat_answer, generate_ir_report
+    from .llm.chain import CHAT_LLM_TIMEOUT_SECONDS, generate_chat_answer, generate_ir_report
 except ImportError:
     from features import MODEL_PATH
     from scan_url import run_scan
     from llm_service import fallback_llm_report
-    from llm.chain import generate_chat_answer, generate_ir_report
+    from llm.chain import CHAT_LLM_TIMEOUT_SECONDS, generate_chat_answer, generate_ir_report
 
 app = FastAPI(title="ShieldURL API", version="1.0")
 logger = logging.getLogger("shieldurl.api")
@@ -29,7 +29,9 @@ if not logger.handlers:
 
 CHAT_RATE_LIMIT = 12
 CHAT_RATE_WINDOW_SECONDS = 60
+CHAT_CACHE_TTL_SECONDS = 300
 _chat_requests: dict[str, deque[float]] = defaultdict(deque)
+_chat_answer_cache: dict[tuple[str, str, str, str], tuple[float, str]] = {}
 CHAT_FALLBACK_ANSWER = (
     "The assistant timed out. The scan result is still valid; follow the displayed recommended actions."
 )
@@ -67,11 +69,12 @@ class LLMReportRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     scan_id: Optional[str] = None
-    message: str = Field(default="", max_length=500)
+    message: str = Field(default="", max_length=800)
     assistant_response_style: str = Field(default="simple")
     scan_context: dict = Field(default_factory=dict)
     conversation: list[dict] = Field(default_factory=list)
     history: list[dict] = Field(default_factory=list)
+    conversation_history: list[dict] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod
@@ -83,10 +86,15 @@ class ChatRequest(BaseModel):
                 if values.get(alias):
                     values["message"] = values[alias]
                     break
-        if not values.get("conversation") and values.get("history"):
-            values["conversation"] = values["history"]
+        if not values.get("conversation"):
+            for alias in ("conversation_history", "history"):
+                if values.get(alias):
+                    values["conversation"] = values[alias]
+                    break
         if "history" not in values:
             values["history"] = values.get("conversation", [])
+        if "conversation_history" not in values:
+            values["conversation_history"] = values.get("conversation", [])
         return values
 
     @validator("message")
@@ -96,8 +104,8 @@ class ChatRequest(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("message cannot be empty")
-        if len(value) > 500:
-            raise ValueError("message must be 500 characters or fewer")
+        if len(value) > 800:
+            raise ValueError("message must be 800 characters or fewer")
         return value
 
     @validator("assistant_response_style")
@@ -108,6 +116,21 @@ class ChatRequest(BaseModel):
         if normalized not in {"simple", "technical", "executive"}:
             return "simple"
         return normalized
+
+    @validator("conversation", "history", "conversation_history")
+    def validate_conversation(cls, value: list[dict]) -> list[dict]:
+        if not isinstance(value, list):
+            return []
+        cleaned = []
+        for item in value[-2:]:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role", "")).strip().lower()
+            content = str(item.get("content", "")).strip()
+            if role not in {"user", "assistant"} or not content:
+                continue
+            cleaned.append({"role": role, "content": _redact_for_log(content)[:240]})
+        return cleaned
 
 
 def _rate_limited(key: str) -> bool:
@@ -126,6 +149,42 @@ def _redact_for_log(value: str) -> str:
     value = CARD_LIKE_PATTERN.sub("[REDACTED]", value)
     value = SENSITIVE_WORD_PATTERN.sub("[REDACTED]", value)
     return value[:160]
+
+
+def _chat_cache_key(scan_id: Optional[str], question: str, style: str, scan_context: dict) -> tuple[str, str, str, str]:
+    detection = scan_context.get("detection") if isinstance(scan_context, dict) else {}
+    if not isinstance(detection, dict):
+        detection = {}
+    context_id = "|".join(str(item) for item in [
+        scan_context.get("checked_url") if isinstance(scan_context, dict) else "",
+        detection.get("display_verdict") or detection.get("final_verdict"),
+        detection.get("phishing_probability") or detection.get("confidence_score"),
+        detection.get("risk_level"),
+    ])
+    return (
+        str(scan_id or ""),
+        re.sub(r"\s+", " ", question.strip().lower()),
+        style,
+        context_id,
+    )
+
+
+def _get_cached_chat_answer(cache_key: tuple[str, str, str, str]) -> Optional[str]:
+    cached = _chat_answer_cache.get(cache_key)
+    if not cached:
+        return None
+    created_at, answer = cached
+    if time.time() - created_at > CHAT_CACHE_TTL_SECONDS:
+        _chat_answer_cache.pop(cache_key, None)
+        return None
+    return answer
+
+
+def _set_cached_chat_answer(cache_key: tuple[str, str, str, str], answer: str) -> None:
+    if len(_chat_answer_cache) > 200:
+        oldest_key = min(_chat_answer_cache, key=lambda key: _chat_answer_cache[key][0])
+        _chat_answer_cache.pop(oldest_key, None)
+    _chat_answer_cache[cache_key] = (time.time(), answer)
 
 
 def _chat_context_is_risky(scan_context: dict) -> bool:
@@ -225,7 +284,17 @@ def _question_asks_why_dangerous(question: str) -> bool:
 
 def _question_asks_clicked_advice(question: str) -> bool:
     normalized = question.lower()
-    return "clicked" in normalized or "opened it" in normalized or "visited it" in normalized
+    return any(term in normalized for term in [
+        "clicked",
+        "opened it",
+        "visited it",
+        "entered credentials",
+        "entered my password",
+        "entered password",
+        "entered otp",
+        "submitted information",
+        "downloaded a file",
+    ])
 
 
 def _question_asks_it_admin(question: str) -> bool:
@@ -407,6 +476,28 @@ def _term_explanation_answer(question: str, scan_context: dict) -> str:
 
 def _question_is_scan_related(question: str) -> bool:
     normalized = question.lower()
+    normalized_compact = re.sub(r"[^a-z0-9\s]", " ", normalized)
+    normalized_compact = re.sub(r"\s+", " ", normalized_compact).strip()
+    ambiguous_scan_phrases = [
+        "what is this",
+        "what is this url",
+        "what this url about",
+        "explain this",
+        "explain this result",
+        "is this safe",
+        "is this dangerous",
+        "can i open it",
+        "can i open this",
+        "should i click it",
+        "should i click this",
+        "what should i do",
+        "why flagged",
+        "why phishing",
+        "what does this mean",
+    ]
+    if any(phrase in normalized_compact for phrase in ambiguous_scan_phrases):
+        return True
+
     scan_terms = [
         "url",
         "link",
@@ -436,17 +527,64 @@ def _question_is_scan_related(question: str) -> bool:
         "report",
         "credential",
         "otp",
+        "mfa",
+        "multi-factor",
+        "multifactor",
         "password",
+        "security awareness",
+        "security",
+        "cybersecurity",
+        "attacker",
+        "attackers",
+        "manufacturing",
+        "employee",
+        "employees",
+        "colleague",
+        "logs",
+        "proxy",
+        "dns",
+        "email",
+        "browser",
     ]
     return any(term in normalized for term in scan_terms)
 
 
+def _question_is_clearly_unrelated(question: str) -> bool:
+    normalized = question.lower()
+    unrelated_terms = [
+        "recipe",
+        "cook",
+        "food",
+        "restaurant",
+        "game",
+        "games",
+        "weather",
+        "homework",
+        "math problem",
+        "essay",
+        "movie",
+        "music",
+        "song",
+        "celebrity",
+        "dating",
+        "relationship",
+        "sports score",
+        "football",
+        "basketball",
+        "joke",
+        "story",
+    ]
+    return any(term in normalized for term in unrelated_terms)
+
+
+def _off_topic_check(question: str, scan_context_exists: bool) -> bool:
+    if scan_context_exists:
+        return _question_is_clearly_unrelated(question)
+    return not _question_is_scan_related(question)
+
+
 def _off_topic_answer() -> str:
-    return _chat_sections(
-        ("Scope", "I can only help with the current ShieldURL scan result and URL safety."),
-        ("Try asking", "Choose a category button for verdict, confidence, risk, indicators, MITRE, NIST, or recommended actions."),
-        ("Limit", "I cannot answer unrelated general questions from this assistant.")
-    )
+    return "I can only help with the current ShieldURL scan result, URL safety, phishing risk, and related cybersecurity actions."
 
 
 def _format_confidence(confidence) -> str:
@@ -701,22 +839,110 @@ def _clicked_guidance(scan_context: dict) -> str:
     verdict, confidence, risk, _ = _context_parts(scan_context)
     mode = _scan_mode(scan_context)
     if mode == "safe":
-        return _chat_sections(
-            ("Status", "No strong phishing indicators were detected by this scan."),
-            ("If clicked", "Verify the page is expected and belongs to the real service."),
-            ("Caution", "Do not enter sensitive data if anything looks unusual or unsolicited.")
-        )
+        return f"The scan shows {verdict}, {risk} risk, and {confidence} confidence. If you clicked it, verify the page is expected and belongs to the real service. Do not enter passwords, OTPs, banking details, or personal data if anything looks unusual or unsolicited."
     if mode == "suspicious":
-        return _chat_sections(
-            ("Status", f"The URL is potentially suspicious: {verdict}, {risk} risk, {confidence} confidence."),
-            ("If clicked", "Stop interacting and do not enter more passwords, OTPs, banking details, or personal data."),
-            ("Recommended action", "Report it to IT/security and change credentials if you already entered them.")
+        return f"The URL is suspicious but not confirmed phishing: {verdict}, {risk} risk, {confidence} confidence. Stop using the site and do not enter more data. Report it to IT/security, change affected credentials if you entered them, check MFA, and monitor account activity."
+    return f"Treat this as urgent: {verdict}, {risk} risk, {confidence} confidence. Stop using the site, do not enter more data, and report it to IT/security. Change affected credentials if you entered them, enable or check MFA, monitor account activity, and have IT/security review relevant logs if available."
+
+
+def _context_based_chat_fallback(scan_context: dict) -> str:
+    verdict, confidence, risk, indicators = _context_parts(scan_context)
+    mode = _scan_mode(scan_context)
+    indicator_text = f" Detected indicators include: {', '.join(indicators[:3])}." if indicators else ""
+
+    if mode == "safe":
+        return (
+            f"This URL was classified as {verdict} with {risk} risk and {confidence} confidence. "
+            "The current scan did not detect strong phishing indicators. Still verify the sender and destination before entering sensitive information."
         )
-    return _chat_sections(
-        ("Status", f"Treat this as urgent: {verdict}, {risk} risk, {confidence} confidence."),
-        ("If clicked", "Stop interacting and do not enter any more passwords, OTPs, banking details, or personal data."),
-        ("Recommended action", "Report it, change credentials if entered, enable MFA, and monitor account logins.")
+
+    if mode == "suspicious":
+        return (
+            f"This URL was classified as {verdict} with {risk} risk and {confidence} confidence. "
+            "It is suspicious but not confirmed phishing. Avoid entering passwords, OTPs, banking details, or personal data until IT/security reviews it."
+            f"{indicator_text}"
+        )
+
+    return (
+        f"This URL was classified as {verdict} with {risk} risk and {confidence} confidence. "
+        "It may be related to phishing activity, such as fake login pages, credential theft, OTP theft, or financial fraud. "
+        "Do not open it or enter sensitive information."
+        f"{indicator_text}"
     )
+
+
+def _scan_detail_answer(scan_context: dict) -> str:
+    verdict, confidence, risk, indicators = _context_parts(scan_context)
+    mode = _scan_mode(scan_context)
+    indicator_text = ", ".join(indicators[:3]) if indicators else "no specific indicators were listed in the scan context"
+
+    if mode == "safe":
+        return (
+            f"This scan classified the URL as {verdict} with {risk} risk and {confidence} confidence. "
+            "No strong phishing indicators were detected from the available URL signals. "
+            f"Indicators: {indicator_text}. Still verify the sender and destination before entering sensitive information."
+        )
+
+    if mode == "suspicious":
+        return (
+            f"This scan classified the URL as {verdict} with {risk} risk and {confidence} confidence. "
+            "That means it has suspicious URL characteristics, but the scan does not confirm phishing. "
+            f"Indicators: {indicator_text}. Avoid entering passwords, OTPs, banking details, or personal data until IT/security reviews it."
+        )
+
+    return (
+        f"This scan classified the URL as {verdict} with {risk} risk and {confidence} confidence. "
+        "That means the URL may be used for phishing activity such as fake login pages, credential theft, OTP theft, or financial fraud. "
+        f"Indicators: {indicator_text}. Do not open it, do not enter sensitive information, and report it to IT/security."
+    )
+
+
+def _simple_scan_answer(question: str, scan_context: dict) -> str:
+    normalized = re.sub(r"[^a-z0-9\s]", " ", question.lower())
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    verdict, confidence, risk, _ = _context_parts(scan_context)
+    mode = _scan_mode(scan_context)
+    verdict_text = verdict.lower()
+
+    if "panic" in normalized:
+        if mode == "safe":
+            return f"No need to panic. This URL was classified as {verdict_text} with {risk} risk. Still verify the sender before entering sensitive information."
+        return f"No need to panic, but treat this seriously. This URL was classified as {verdict_text} with {risk} risk. Do not open it or enter any information. If you already entered credentials, change them immediately and report it to IT/security."
+
+    if normalized in {"can i open it", "can i open this", "should i click it", "should i click this"} or "safe to open" in normalized:
+        if mode == "safe":
+            return f"The scan classified it as {verdict} with {risk} risk and {confidence} confidence. You may open it only if you trust the source and expected the link. Do not enter sensitive data if anything looks unusual."
+        return f"Do not open or click it. This URL was classified as {verdict} with {risk} risk and {confidence} confidence. Report it to IT/security and use an official website or trusted bookmark instead."
+
+    if normalized in {"is this safe", "is it safe"}:
+        if mode == "safe":
+            return f"The scan classified it as {verdict} with {risk} risk and {confidence} confidence. No strong phishing indicators were detected, but still verify the sender and destination before entering sensitive data."
+        return f"No. This scan classified the URL as {verdict} with {risk} risk and {confidence} confidence. Avoid opening it or entering passwords, OTPs, banking details, or personal information."
+
+    explain_terms = [
+        "what is this",
+        "what is this url",
+        "what this url about",
+        "what does this mean",
+        "explain this",
+        "explain this result",
+        "explain in detail",
+        "explain in details",
+        "explain details",
+        "give details",
+        "tell me more",
+        "details",
+        "detail",
+    ]
+    if normalized in explain_terms or any(term in normalized for term in ["explain", "detail", "tell me more"]):
+        return _scan_detail_answer(scan_context)
+
+    if normalized in {"what should i do", "what do i do", "what should i do now"}:
+        if mode == "safe":
+            return f"No immediate action is required from this scan. The URL was classified as {verdict} with {risk} risk. Continue normal safe browsing and verify unexpected links before entering sensitive data."
+        return f"Do not open the URL or enter information. Report it to IT/security, block it if policy allows, and change credentials immediately if anyone entered them. The scan classified it as {verdict} with {risk} risk."
+
+    return ""
 
 
 def _it_admin_guidance(scan_context: dict) -> str:
@@ -1293,30 +1519,6 @@ def _predefined_question_answer(question: str, scan_context: dict) -> str:
 
 
 def _fast_chat_answer(question: str, scan_context: dict) -> str:
-    predefined_answer = _predefined_question_answer(question, scan_context)
-    if predefined_answer:
-        return predefined_answer
-    term_answer = _term_explanation_answer(question, scan_context)
-    if term_answer:
-        return term_answer
-    if _question_asks_why_dangerous(question):
-        return _risky_danger_explanation(scan_context)
-    if _question_asks_clicked_advice(question):
-        return _clicked_guidance(scan_context)
-    if _question_asks_it_admin(question):
-        return _it_admin_guidance(scan_context)
-    if _question_asks_confidence(question):
-        return _confidence_explanation(scan_context)
-    if _question_asks_to_open(question):
-        return _risky_open_guidance(scan_context)
-    if _question_asks_mitre(question):
-        return _mitre_explanation(scan_context)
-    if _question_asks_indicators(question):
-        return _indicator_explanation(scan_context)
-    if _question_asks_verdict_or_risk(question):
-        return _verdict_risk_explanation(scan_context)
-    if _question_asks_phishing_definition(question):
-        return _phishing_definition()
     return ""
 
 
@@ -1551,9 +1753,15 @@ def chat(req: ChatRequest, request: Request):
 
     started = time.perf_counter()
     status = "ok"
+    fallback_type = "none"
+    using_open_question_prompt = False
+    off_topic = False
+    scan_context_exists = False
+    scan_context = req.scan_context
+    cache_used = False
     try:
-        scan_context = req.scan_context
-        if not _valid_scan_context(scan_context):
+        scan_context_exists = _valid_scan_context(scan_context)
+        if not scan_context_exists:
             scan_context = {
                 "checked_url": "",
                 "detection": {
@@ -1564,30 +1772,42 @@ def chat(req: ChatRequest, request: Request):
                 "assistant_scope": "General ShieldURL and cybersecurity guidance. Do not claim a URL was scanned unless scan context is provided.",
             }
 
+        history = req.conversation or req.conversation_history or req.history
         answer = _fast_chat_answer(req.message, scan_context)
         if answer:
             status = "fast_answer"
-        elif _chat_context_is_risky(scan_context):
-            if _question_is_scan_related(req.message):
-                answer = _scan_context_summary_answer(scan_context)
-                status = "fast_answer"
-            else:
-                answer = _off_topic_answer()
-                status = "off_topic"
+            fallback_type = "fast_context"
         else:
-            if not _question_is_scan_related(req.message):
-                answer = _off_topic_answer()
-                status = "off_topic"
-            elif len(req.message.split()) > 14:
-                answer = _scan_context_summary_answer(scan_context)
-                status = "fast_answer"
+            off_topic = _off_topic_check(req.message, scan_context_exists)
+            logger.info(
+                "chat off_topic_check scan_id=%s result=%s scan_context_exists=%s using_open_question_prompt=%s llm_timeout_seconds=%s",
+                req.scan_id,
+                off_topic,
+                scan_context_exists,
+                not off_topic,
+                CHAT_LLM_TIMEOUT_SECONDS,
+            )
+
+        if not answer and off_topic:
+            answer = _off_topic_answer()
+            status = "off_topic"
+            fallback_type = "off_topic"
+        elif not answer:
+            cache_key = _chat_cache_key(req.scan_id, req.message, req.assistant_response_style, scan_context)
+            cached_answer = _get_cached_chat_answer(cache_key)
+            if cached_answer:
+                answer = cached_answer
+                cache_used = True
+                status = "cache_hit"
             else:
-                answer = generate_chat_answer(req.message, scan_context, req.assistant_response_style, req.conversation)
-            if (
-                _answer_has_placeholder_text(answer)
-                or _answer_refuses_help(answer)
-            ):
-                raise ValueError("LLM returned an invalid assistant answer")
+                using_open_question_prompt = True
+                answer = generate_chat_answer(req.message, scan_context, req.assistant_response_style, history)
+                if (
+                    _answer_has_placeholder_text(answer)
+                    or _answer_refuses_help(answer)
+                ):
+                    raise ValueError("LLM returned an invalid assistant answer")
+                _set_cached_chat_answer(cache_key, answer)
 
         if not answer:
             raise ValueError("LLM returned an empty answer")
@@ -1599,19 +1819,27 @@ def chat(req: ChatRequest, request: Request):
         })
     except Exception as exc:
         status = "fallback"
+        fallback_type = "context_based" if scan_context_exists else "generic_timeout"
         logger.warning("chat fallback scan_id=%s error=%s", req.scan_id, exc)
+        answer = _context_based_chat_fallback(scan_context) if scan_context_exists else CHAT_FALLBACK_ANSWER
         return _json_response({
-            "answer": CHAT_FALLBACK_ANSWER,
+            "answer": answer,
             "used_scan_context": True,
             "safety_notice": "Detection result was not modified by the LLM.",
         })
     finally:
         latency_ms = round((time.perf_counter() - started) * 1000, 2)
         logger.info(
-            "chat request timestamp=%s scan_id=%s status=%s latency_ms=%s question=%s",
+            "chat request timestamp=%s scan_id=%s status=%s latency_ms=%s off_topic_check=%s scan_context_exists=%s using_open_question_prompt=%s llm_timeout_seconds=%s fallback_type=%s cache_used=%s question=%s",
             time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             req.scan_id,
             status,
             latency_ms,
+            off_topic,
+            scan_context_exists,
+            using_open_question_prompt,
+            CHAT_LLM_TIMEOUT_SECONDS,
+            fallback_type,
+            cache_used,
             _redact_for_log(req.message),
         )
