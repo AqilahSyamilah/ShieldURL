@@ -156,13 +156,11 @@ SHORTENERS = {
     "shorturl.at",
 }
 
-SUSPICIOUS_KEYWORDS = {"secure", "account", "update", "login", "verify", "signin", "banking", "wallet"}
+SUSPICIOUS_KEYWORDS = {"secure", "account", "update"}
 BRAND_IMPERSONATION_KEYWORDS = {
     "paypal",
     "bank",
-    "maybank",
     "cimb",
-    "login",
     "verify",
     "secure",
     "account",

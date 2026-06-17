@@ -174,6 +174,83 @@ $users_online = $stmt->fetch()['users_online'];
       font-size: 1.5rem;
     }
 
+    .detection-chart-card {
+      margin-bottom: 1.5rem;
+    }
+
+    .detection-chart-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .detection-chart-header h3 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1.1rem;
+    }
+
+    .detection-chart-header p {
+      margin: 0.25rem 0 0;
+      color: #64748b;
+      font-size: 0.92rem;
+    }
+
+    .detection-chart-total {
+      color: #0f172a;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .detection-chart {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .detection-chart-row {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr) 72px;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .detection-chart-label {
+      color: #334155;
+      font-weight: 800;
+    }
+
+    .detection-chart-track {
+      height: 18px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .detection-chart-bar {
+      width: 0%;
+      min-width: 0;
+      height: 100%;
+      border-radius: inherit;
+      transition: width 0.35s ease;
+    }
+
+    .detection-chart-bar.safe {
+      background: linear-gradient(90deg, #16a34a 0%, #86efac 100%);
+    }
+
+    .detection-chart-bar.suspicious {
+      background: linear-gradient(90deg, #f59e0b 0%, #facc15 100%);
+    }
+
+    .detection-chart-value {
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      text-align: right;
+    }
+
     .dashboard-layout {
       display: grid;
       grid-template-columns: 220px minmax(0, 1fr);
@@ -582,6 +659,52 @@ $users_online = $stmt->fetch()['users_online'];
       font-size: 1.02rem;
       line-height: 1.6;
       color: #334155;
+      margin: 0.9rem 0 0;
+    }
+
+    .incident-focus-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.65rem;
+      margin-top: 0.75rem;
+    }
+
+    .incident-focus-item {
+      border: 1px solid #dbeafe;
+      background: #f8fafc;
+      border-left: 4px solid #2563eb;
+      border-radius: 8px;
+      padding: 0.75rem;
+      min-height: 84px;
+    }
+
+    .incident-focus-item span {
+      display: block;
+      color: #64748b;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+
+    .incident-focus-item strong {
+      display: block;
+      color: #0f172a;
+      font-size: 0.94rem;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 900px) {
+      .incident-focus-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      .incident-focus-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .action-grid {
@@ -630,6 +753,44 @@ $users_online = $stmt->fetch()['users_online'];
       padding: 0.9rem;
       font-family: Consolas, Monaco, monospace;
       font-size: 0.84rem;
+    }
+
+    .page-indicator-section {
+      margin-top: 0.9rem;
+    }
+
+    .page-indicator-section h4 {
+      margin: 0 0 0.55rem;
+      color: #0f172a;
+      font-size: 0.95rem;
+      font-weight: 800;
+    }
+
+    .page-indicator-details {
+      display: grid;
+      gap: 0.45rem;
+      background: #f8fafc;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 0.85rem;
+      font-size: 0.9rem;
+    }
+
+    .page-indicator-row {
+      display: grid;
+      grid-template-columns: minmax(150px, 220px) 1fr;
+      gap: 0.75rem;
+      align-items: start;
+    }
+
+    .page-indicator-row strong {
+      color: #334155;
+    }
+
+    .page-indicator-summary {
+      margin: 0;
+      padding-left: 1.1rem;
     }
 
     .result-meta {
@@ -1867,6 +2028,31 @@ $users_online = $stmt->fetch()['users_online'];
         <div class="dashboard-tab-panel" id="tab-history">
           <div class="card">
             <h2>URL Analysis History</h2>
+            <div class="dashboard-card detection-chart-card">
+              <div class="detection-chart-header">
+                <div>
+                  <h3>Safe vs Suspicious Detection</h3>
+                  <p>Safe and suspicious verdict totals from all URL scans.</p>
+                </div>
+                <div class="detection-chart-total" id="detectionChartTotal">0 detections</div>
+              </div>
+              <div class="detection-chart" aria-label="Safe and suspicious detection graph">
+                <div class="detection-chart-row">
+                  <div class="detection-chart-label">Safe</div>
+                  <div class="detection-chart-track">
+                    <div class="detection-chart-bar safe" id="safeDetectionBar"></div>
+                  </div>
+                  <div class="detection-chart-value" id="safeDetectionCount">0</div>
+                </div>
+                <div class="detection-chart-row">
+                  <div class="detection-chart-label">Suspicious</div>
+                  <div class="detection-chart-track">
+                    <div class="detection-chart-bar suspicious" id="suspiciousDetectionBar"></div>
+                  </div>
+                  <div class="detection-chart-value" id="suspiciousDetectionCount">0</div>
+                </div>
+              </div>
+            </div>
             <div class="form-row" style="margin-bottom: 1.5rem;">
               <div class="form-group">
                 <label>Filter by Status</label>
@@ -2235,6 +2421,86 @@ $users_online = $stmt->fetch()['users_online'];
       });
     }
 
+    function parseObjectPayload(value) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+      if (typeof value === 'string' && value.trim() !== '') {
+        try {
+          const parsed = JSON.parse(value);
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+          return {};
+        }
+      }
+      return {};
+    }
+
+    function formatPageIndicatorValue(value) {
+      if (Array.isArray(value)) {
+        return value.length ? value.map(item => escapeHtml(String(item))).join(', ') : 'None Detected';
+      }
+      if (typeof value === 'boolean') {
+        return value ? 'Yes' : 'No';
+      }
+      if (value === null || value === undefined || value === '') {
+        return 'Not Collected';
+      }
+      return escapeHtml(String(value));
+    }
+
+    function renderPageIndicatorDetails(pageIndicators) {
+      const container = document.getElementById('pageIndicatorDetails');
+      if (!container) return;
+      container.innerHTML = formatPageIndicatorDetailsHtml(pageIndicators);
+    }
+
+    function formatPageIndicatorDetailsHtml(pageIndicators) {
+      const indicators = parseObjectPayload(pageIndicators);
+      const fields = [
+        ['page_title', 'Page Title'],
+        ['http_status', 'HTTP Status'],
+        ['redirect_count', 'Redirect Count'],
+        ['has_form', 'Has Form'],
+        ['has_password_field', 'Has Password Field'],
+        ['has_email_field', 'Has Email Field'],
+        ['has_bank_or_payment_keywords', 'Has Bank or Payment Keywords'],
+        ['has_download_link', 'Has Download Link'],
+        ['suspicious_file_extensions', 'Suspicious File Extensions'],
+      ];
+
+      if (!Object.keys(indicators).length) {
+        return '<div class="page-indicator-row"><strong>Status</strong><span>Not Collected</span></div>';
+      }
+
+      const rows = fields.map(([key, label]) => `
+        <div class="page-indicator-row">
+          <strong>${escapeHtml(label)}</strong>
+          <span>${formatPageIndicatorValue(indicators[key])}</span>
+        </div>
+      `);
+      const summary = Array.isArray(indicators.indicators_summary)
+        ? indicators.indicators_summary.filter(item => item !== null && item !== undefined && String(item).trim() !== '')
+        : [];
+      rows.push(`
+        <div class="page-indicator-row">
+          <strong>Indicators Summary</strong>
+          <span>${
+            summary.length
+              ? `<ul class="page-indicator-summary">${summary.map(item => `<li>${escapeHtml(String(item))}</li>`).join('')}</ul>`
+              : 'Not Collected'
+          }</span>
+        </div>
+      `);
+      return rows.join('');
+    }
+
+    function pageIndicatorsFromScanResult(result, detection = {}) {
+      return (
+        (detection && typeof detection.page_indicators === 'object' ? detection.page_indicators : null)
+        || (result && typeof result.page_indicators === 'object' ? result.page_indicators : null)
+        || {}
+      );
+    }
+
     function formatProbabilityValue(value) {
       if (typeof value === 'string' && value.includes('%')) return value;
       const numeric = Number(value || 0);
@@ -2290,8 +2556,65 @@ $users_online = $stmt->fetch()['users_online'];
     function updateMitreSummary(audience, verdictMode, value) {
       const card = document.getElementById('mitreSummaryCard');
       const field = document.getElementById('mitrePrimaryValue');
+      const explanation = document.getElementById('mitrePrimaryExplanation');
       if (card) card.style.display = verdictMode === 'safe' ? 'none' : '';
-      if (field) field.textContent = value || 'Not Applicable';
+      const formatted = formatMitreSummaryValue(value);
+      if (field) field.textContent = formatted.technique || 'Not Applicable';
+      if (explanation) {
+        explanation.textContent = formatted.explanation;
+        explanation.style.display = formatted.explanation && verdictMode !== 'safe' ? '' : 'none';
+      }
+    }
+
+    function setIncidentSummary(text) {
+      const summary = String(text || '-');
+      const summaryEl = document.getElementById('llmSummary');
+      if (summaryEl) summaryEl.textContent = summary;
+      renderIncidentFocus(summary);
+    }
+
+    function renderIncidentFocus(summary) {
+      const lower = String(summary || '').toLowerCase();
+      const status = document.getElementById('statusBadge')?.textContent?.trim() || 'Unknown';
+      const risk = document.getElementById('riskLevelValue')?.textContent?.trim() || 'Unknown';
+      const interaction = document.getElementById('interactionStatusValue')?.textContent?.trim() || 'Not collected';
+      const isSafe = status.toLowerCase().includes('safe');
+      let behavior = 'Deceptive link or suspicious URL flow';
+      if (isSafe) behavior = 'No major phishing behavior detected';
+      else if (lower.includes('download') || lower.includes('.exe') || lower.includes('.zip') || lower.includes('malicious file')) behavior = 'Suspicious file download lure';
+      else if (lower.includes('credential') || lower.includes('password') || lower.includes('login') || lower.includes('otp')) behavior = 'Credential-harvesting or fake login flow';
+      else if (lower.includes('redirect')) behavior = 'Redirect-based suspicious flow';
+
+      let exposure = 'Depends on whether data was entered';
+      if (interaction.toLowerCase().includes('not accessed')) exposure = 'No direct user access recorded';
+      else if (interaction.toLowerCase().includes('accessed')) exposure = isSafe ? 'Access recorded; current risk is low' : 'Possible exposure after access';
+      else if (isSafe) exposure = 'No immediate exposure indicated';
+
+      let action = isSafe ? 'No immediate response required' : 'Stop interaction and report to IT/security';
+      if (!isSafe && lower.includes('reset')) action = 'Reset credentials if sensitive data was entered';
+      if (!isSafe && (lower.includes('download') || lower.includes('malicious file'))) action = 'Do not run downloaded files; report the URL';
+
+      const values = {
+        incidentFocusCase: `${status}${risk && risk !== 'Unknown' ? ` / ${risk}` : ''}`,
+        incidentFocusBehavior: behavior,
+        incidentFocusExposure: exposure,
+        incidentFocusAction: action
+      };
+      Object.entries(values).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      });
+    }
+
+    function formatMitreSummaryValue(value) {
+      const text = String(value || '').trim();
+      if (!text || text === 'Not Applicable') return { technique: text || 'Not Applicable', explanation: '' };
+      const match = text.match(/^(T\d{4}(?:\.\d{3})?\s*-\s*[^-]+?)\s+-\s+(.+)$/);
+      if (!match) return { technique: text, explanation: '' };
+      return {
+        technique: match[1].trim(),
+        explanation: match[2].trim()
+      };
     }
 
     function renderSimpleList(containerId, items, emptyMessage) {
@@ -2318,6 +2641,67 @@ $users_online = $stmt->fetch()['users_online'];
       const id = tech.id || tech.technique_id || tech.tactic_id || '';
       const name = tech.name || tech.technique_name || tech.technique || tech.tactic || '';
       return [id, name].filter(Boolean).join(' - ') || JSON.stringify(tech);
+    }
+
+    const MITRE_SUPPORTING_PREFIX = 'Potential / LLM-assisted inference:';
+
+    function splitMitreMapping(items, formatter = item => String(item || '')) {
+      const seenPrimary = new Set();
+      const seenSupporting = new Set();
+      const primaryLabels = [];
+      const supportingLabels = [];
+      (Array.isArray(items) ? items : []).forEach(item => {
+        const rawText = typeof item === 'string' ? item.trim() : '';
+        const label = String(formatter(item) || '').trim();
+        if (!label) return;
+        if (rawText.toLowerCase().startsWith(MITRE_SUPPORTING_PREFIX.toLowerCase())) {
+          const supportingLabel = rawText.slice(MITRE_SUPPORTING_PREFIX.length).trim().replace(/^[-:]\s*/, '');
+          const key = supportingLabel.toLowerCase();
+          if (supportingLabel && !seenSupporting.has(key)) {
+            seenSupporting.add(key);
+            supportingLabels.push(supportingLabel);
+          }
+          return;
+        }
+        const key = label.toLowerCase();
+        if (!seenPrimary.has(key)) {
+          seenPrimary.add(key);
+          primaryLabels.push(label);
+        }
+      });
+      return {
+        primaryLabel: primaryLabels.find(label => label.includes('T1566.002')) || primaryLabels[0] || '',
+        supportingLabels
+      };
+    }
+
+    function renderMitreMapping(items, verdictMode, formatter = formatMitreTag) {
+      const primaryContainer = document.getElementById('mitreTags');
+      const supportingSection = document.getElementById('mitreSupportingSection');
+      const supportingContainer = document.getElementById('mitreSupportingTags');
+      if (primaryContainer) primaryContainer.innerHTML = '';
+      if (supportingContainer) supportingContainer.innerHTML = '';
+      if (supportingSection) supportingSection.style.display = 'none';
+      if (verdictMode === 'safe') return { primaryLabel: 'Not Applicable', supportingLabels: [] };
+
+      const split = splitMitreMapping(items, formatter);
+      if (primaryContainer && split.primaryLabel) {
+        const span = document.createElement('span');
+        span.className = 'badge';
+        span.style.background = '#e2e8f0';
+        span.style.color = '#4a5568';
+        span.textContent = split.primaryLabel;
+        primaryContainer.appendChild(span);
+      }
+      if (supportingSection && supportingContainer && split.supportingLabels.length) {
+        split.supportingLabels.forEach(label => {
+          const li = document.createElement('li');
+          li.textContent = label;
+          supportingContainer.appendChild(li);
+        });
+        supportingSection.style.display = '';
+      }
+      return split;
     }
 
     function mapRiskFromStatus(status) {
@@ -2773,6 +3157,11 @@ $users_online = $stmt->fetch()['users_online'];
     mountAssistantToViewport();
     initAssistantResize();
 
+    const urlField = document.getElementById('url');
+    urlField?.addEventListener('blur', () => {
+      urlField.value = urlField.value.trim();
+    });
+
     document.getElementById('checkUrlForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       if (isScanRunning) return;
@@ -2781,7 +3170,13 @@ $users_online = $stmt->fetch()['users_online'];
         return;
       }
 
-      const url = document.getElementById('url').value;
+      const urlInput = document.getElementById('url');
+      const url = urlInput.value.trim();
+      urlInput.value = url;
+      if (!url) {
+        urlInput.reportValidity();
+        return;
+      }
       const clicked = await askClickedStatus();
       const resultDiv = document.getElementById('checkResult');
       resultDiv.className = 'result-message loading';
@@ -2831,6 +3226,7 @@ $users_online = $stmt->fetch()['users_online'];
 
         const features = result.features || detection.features || {};
         document.getElementById('analysisDetails').textContent = JSON.stringify(features, null, 2);
+        renderPageIndicatorDetails(pageIndicatorsFromScanResult(result, detection));
         document.getElementById('analyzedTime').textContent = new Date().toLocaleString();
 
         const llmReport = result.llm_report && typeof result.llm_report === 'object' ? result.llm_report : {};
@@ -2840,32 +3236,22 @@ $users_online = $stmt->fetch()['users_online'];
 
         const displayStatusText = result.display_status || result.overall?.display_verdict || detection.display_verdict || status;
         const verdictMode = String(displayStatusText).toLowerCase().includes('suspicious') ? 'suspicious' : (String(status).toLowerCase() === 'phishing' ? 'phishing' : 'safe');
-        const incidentSummary = String(displayStatusText).toLowerCase().includes('potentially suspicious')
-          ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
-          : (llm.incident_summary || llm.executive_summary || result.llm_summary || `The submitted URL was classified as ${displayStatusText} with ${riskLevel.toLowerCase()} risk based on the scan result. ${verdictPolicyText(displayStatusText)}`);
-        document.getElementById('llmSummary').textContent = incidentSummary;
+        const incidentSummary = llm.incident_summary || llm.executive_summary || result.llm_summary || `The submitted URL was classified as ${displayStatusText} with ${riskLevel.toLowerCase()} risk based on the scan result. ${verdictPolicyText(displayStatusText)}`;
+        setIncidentSummary(incidentSummary);
 
         const containmentActions = collectList(llm.containment_actions, result.containment_actions);
         const eradicationActions = collectList(llm.eradication_recovery_actions, result.eradication_recovery_actions);
         const postIncidentActions = collectList(llm.post_incident_recommendations, result.post_incident_recommendations);
         const fallbackIncident = collectList(llm.incident_response, result.incident_response);
+        renderSimpleList('detectionAnalysisList', collectList(llm.detection_analysis, result.detection_analysis), '');
         renderSimpleList('containmentList', containmentActions.length ? containmentActions : fallbackIncident, '');
         renderSimpleList('eradicationList', eradicationActions, '');
         renderSimpleList('postIncidentList', postIncidentActions, '');
         document.getElementById('userAdvisory').textContent = llm.user_advisory || result.user_advisory || 'Review the URL carefully before interacting with it. Verify the destination before entering login details, OTP, banking information, or personal data.';
 
         const mitreMapping = verdictMode === 'safe' ? [] : collectList(llm.mitre_attack_mapping, result.mitre_attack_mapping, llm.mitre_techniques, result.mitre_techniques);
-        const mitreContainer = document.getElementById('mitreTags');
-        mitreContainer.innerHTML = '';
-        mitreMapping.forEach(tech => {
-          const span = document.createElement('span');
-          span.className = 'badge';
-          span.style.background = '#e2e8f0';
-          span.style.color = '#4a5568';
-          span.textContent = formatMitreTag(tech);
-          mitreContainer.appendChild(span);
-        });
-        updateMitreSummary(result.report_audience || result.llm_report?.audience || 'admin', verdictMode, verdictMode === 'safe' ? 'Not Applicable' : (mitreMapping.length ? formatMitreTag(mitreMapping[0]) : 'Not Applicable'));
+        const renderedMitre = renderMitreMapping(mitreMapping, verdictMode, formatMitreTag);
+        updateMitreSummary(result.report_audience || result.llm_report?.audience || 'admin', verdictMode, verdictMode === 'safe' ? 'Not Applicable' : (renderedMitre.primaryLabel || 'Not Applicable'));
 
         const downloadBtn = document.getElementById('downloadReportBtn');
         const downloadLabel = document.getElementById('downloadReportLabel');
@@ -2882,6 +3268,7 @@ $users_online = $stmt->fetch()['users_online'];
         const displayStatusClass = String(displayStatusText).toLowerCase().includes('suspicious') ? 'suspicious' : status;
         statusBadge.className = 'badge ' + displayStatusClass;
         statusBadge.textContent = String(displayStatusText).toUpperCase();
+        renderIncidentFocus(document.getElementById('llmSummary')?.textContent || '');
 
         const latestScanContext = {
           checked_url: displayUrl,
@@ -2912,7 +3299,7 @@ $users_online = $stmt->fetch()['users_online'];
         setScanInteractionState({ inputDisabled: true, buttonDisabled: false, buttonLabel: 'Recheck URL' });
         updateShieldState(displayStatusText || status);
         if (result.llm_pending && result.report_id) {
-          document.getElementById('llmSummary').textContent = 'AI report is being prepared. The URL safety result is already available.';
+          setIncidentSummary('AI report is being prepared. The URL safety result is already available.');
           fetch('../api/generate_report.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2922,13 +3309,19 @@ $users_online = $stmt->fetch()['users_online'];
             .then(reportResult => {
               const generated = reportResult.llm_report && typeof reportResult.llm_report === 'object' ? reportResult.llm_report : {};
               if (!reportResult.success || !Object.keys(generated).length) return;
-              document.getElementById('llmSummary').textContent = String(displayStatusText).toLowerCase().includes('potentially suspicious')
-                ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
-                : (generated.incident_summary || 'AI report is ready.');
+              setIncidentSummary(generated.incident_summary || 'AI report is ready.');
+              renderSimpleList('detectionAnalysisList', collectList(generated.detection_analysis, reportResult.detection_analysis), '');
               renderSimpleList('containmentList', collectList(generated.containment_actions), '');
               renderSimpleList('eradicationList', collectList(generated.eradication_recovery_actions), '');
               renderSimpleList('postIncidentList', collectList(generated.post_incident_recommendations), '');
               document.getElementById('userAdvisory').textContent = generated.user_advisory || document.getElementById('userAdvisory').textContent;
+              const generatedMitre = verdictMode === 'safe' ? [] : collectList(generated.mitre_attack_mapping, reportResult.mitre_techniques);
+              const renderedGeneratedMitre = renderMitreMapping(generatedMitre, verdictMode, formatMitreTag);
+              updateMitreSummary(reportResult.report_audience || generated.audience || 'admin', verdictMode, verdictMode === 'safe' ? 'Not Applicable' : (renderedGeneratedMitre.primaryLabel || 'Not Applicable'));
+              const generatedPageIndicators = reportResult.page_indicators || generated.page_indicators || {};
+              if (Object.keys(generatedPageIndicators || {}).length) {
+                renderPageIndicatorDetails(generatedPageIndicators);
+              }
               loadHistory();
             })
             .catch(error => console.warn('AI report generation failed:', error));
@@ -3075,9 +3468,43 @@ $users_online = $stmt->fetch()['users_online'];
       }
     }
 
+    function setDetectionGraph(data) {
+      const counts = data && typeof data === 'object' ? data : {};
+      const safe = Number(counts.safe_detections ?? counts.safe ?? counts.detection_counts?.safe ?? 0);
+      const suspicious = Number(counts.suspicious_detections ?? counts.suspicious ?? counts.detection_counts?.suspicious ?? 0);
+      const safeCount = Number.isFinite(safe) ? Math.max(0, safe) : 0;
+      const suspiciousCount = Number.isFinite(suspicious) ? Math.max(0, suspicious) : 0;
+      const total = safeCount + suspiciousCount;
+      const safePercent = total > 0 ? (safeCount / total) * 100 : 0;
+      const suspiciousPercent = total > 0 ? (suspiciousCount / total) * 100 : 0;
+
+      const safeBar = document.getElementById('safeDetectionBar');
+      const suspiciousBar = document.getElementById('suspiciousDetectionBar');
+      if (safeBar) safeBar.style.width = `${safePercent}%`;
+      if (suspiciousBar) suspiciousBar.style.width = `${suspiciousPercent}%`;
+
+      const safeLabel = document.getElementById('safeDetectionCount');
+      const suspiciousLabel = document.getElementById('suspiciousDetectionCount');
+      const totalLabel = document.getElementById('detectionChartTotal');
+      if (safeLabel) safeLabel.textContent = String(safeCount);
+      if (suspiciousLabel) suspiciousLabel.textContent = String(suspiciousCount);
+      if (totalLabel) totalLabel.textContent = `${total} detection${total === 1 ? '' : 's'}`;
+    }
+
+    async function loadDetectionGraph() {
+      try {
+        const response = await fetch('../api/admin_stats.php', { cache: 'no-store' });
+        const stats = await parseJsonResponse(response);
+        setDetectionGraph(stats);
+      } catch (error) {
+        console.error('Error loading detection graph:', error);
+      }
+    }
+
     async function loadHistory() {
       const filter = document.getElementById('historyFilter').value;
       try {
+        loadDetectionGraph();
         const response = await fetch('../api/get_analysis.php?filter=' + encodeURIComponent(filter));
         const history = await parseJsonResponse(response);
         const tbody = document.getElementById('historyTableBody');
@@ -3226,12 +3653,17 @@ $users_online = $stmt->fetch()['users_online'];
     function formatScanMitre(items) {
       const list = normalizeScanList(items);
       if (!list.length) return '<span>Not Collected</span>';
-      return list.map(item => {
+      const split = splitMitreMapping(list, item => {
         const label = typeof item === 'object'
           ? `${item.id || item.technique_id || ''}${((item.id || item.technique_id) && (item.name || item.technique)) ? ' - ' : ''}${item.name || item.technique || item.description || 'Technique'}`
           : item;
-        return `<span class="badge">${escapeHtml(label)}</span>`;
-      }).join(' ');
+        return label;
+      });
+      const primary = split.primaryLabel ? `<div><strong>Primary Technique:</strong> <span class="badge">${escapeHtml(split.primaryLabel)}</span></div>` : '';
+      const supporting = split.supportingLabels.length
+        ? `<div style="margin-top:0.6rem;"><strong>Potential Supporting Techniques (LLM-Assisted)</strong><ul style="margin:0.35rem 0 0; padding-left:1.1rem;">${split.supportingLabels.map(label => `<li>${escapeHtml(label)}</li>`).join('')}</ul></div>`
+        : '';
+      return primary || supporting ? `${primary}${supporting}` : '<span>Not Collected</span>';
     }
 
     function scanThreatBehavior(detail) {
@@ -3264,9 +3696,8 @@ $users_online = $stmt->fetch()['users_online'];
       const recommendedActions = normalizeScanList(detail.nist_response);
       const followUpActions = normalizeScanList(detail.incident_response);
       const additionalGuidance = normalizeScanList(detail.post_incident_recommendations);
-      const summary = String(detail.display_status || '').toLowerCase().includes('potentially suspicious')
-        ? 'This URL shows suspicious characteristics, but it is not confirmed phishing. Users should verify the website carefully before entering passwords, OTPs, or sensitive information.'
-        : displayScanValue(detail.llm_summary);
+      const detectionAnalysis = normalizeScanList(detail.detection_analysis || detail.llm_report?.detection_analysis);
+      const summary = displayScanValue(detail.llm_report?.incident_summary || detail.llm_summary);
       const behavior = scanThreatBehavior(detail);
 
       body.innerHTML = `
@@ -3289,10 +3720,12 @@ $users_online = $stmt->fetch()['users_online'];
           <strong style="display:block; color:#0f172a; margin-bottom:0.35rem;">Detailed Summary</strong>
           <pre>${escapeHtml(summary)}</pre>
         `, true)}
+        ${auditModalRow('Detection Analysis', formatScanList(detectionAnalysis), true)}
+        ${auditModalRow('Webpage Indicator Analysis', formatPageIndicatorDetailsHtml(detail.page_indicators || detail.detection?.page_indicators || {}), true)}
         ${auditModalRow(detailMode === 'suspicious' ? 'Cautious Review Actions' : 'Recommended Actions', formatScanList(recommendedActions), true)}
         ${auditModalRow('Follow-Up', formatScanList(followUpActions), true)}
         ${auditModalRow('Additional Guidance', formatScanList(additionalGuidance), true)}
-        ${detailMode === 'safe' ? '' : auditModalRow(detailMode === 'suspicious' ? 'Potentially Related MITRE ATT&CK' : 'MITRE ATT&CK', formatScanMitre(detail.mitre_attack), true)}
+        ${detailMode === 'safe' ? '' : auditModalRow('MITRE ATT&CK Mapping', formatScanMitre(detail.mitre_attack), true)}
         ${auditModalRow('User Advisory', `<pre>${escapeHtml(displayScanValue(detail.user_advisory))}</pre>`, true)}
       `;
       modal.classList.add('show');

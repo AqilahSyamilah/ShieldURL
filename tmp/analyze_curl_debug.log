@@ -1960,3 +1960,802 @@ Content-Length: 73
 < 
 * Connection #0 to host 127.0.0.1 left intact
 curl_errno=0 curl_error= http_code=200 total=0.281329
+
+[2026-06-11T13:27:28+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Thu, 11 Jun 2026 05:27:27 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=3.090401
+
+[2026-06-11T13:38:40+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Thu, 11 Jun 2026 05:38:40 GMT
+< server: uvicorn
+< content-length: 5277
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=29.384209
+
+[2026-06-11T13:53:39+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Thu, 11 Jun 2026 05:53:38 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=2.930948
+
+[2026-06-11T14:05:30+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Thu, 11 Jun 2026 06:05:29 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.271905
+
+[2026-06-12T22:59:55+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 14:59:54 GMT
+< server: uvicorn
+< content-length: 5277
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=33.691077
+
+[2026-06-12T23:08:08+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 15:08:07 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=2.624049
+
+[2026-06-13T02:11:29+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:11:29 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.514193
+
+[2026-06-13T02:20:02+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:20:01 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.175861
+
+[2026-06-13T02:20:45+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/agoda-ddubai.webflow.io\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 81
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:20:44 GMT
+< server: uvicorn
+< content-length: 4892
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.749706
+
+[2026-06-13T02:21:11+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/service-gestions-paiements-antai.trisaincorporadora.com.br\/infodossier\/redirect","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 137
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:21:11 GMT
+< server: uvicorn
+< content-length: 5407
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.323248
+
+[2026-06-13T02:21:38+08:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 90
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:21:37 GMT
+< server: uvicorn
+< content-length: 5387
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.054402
+
+[2026-06-13T02:22:19+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/caixa-gov.digital\/ibm\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 80
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:22:18 GMT
+< server: uvicorn
+< content-length: 4886
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.680447
+
+[2026-06-13T02:23:28+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/primeamazon-remboursement.com\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 87
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:23:28 GMT
+< server: uvicorn
+< content-length: 4900
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.223542
+
+[2026-06-13T02:24:04+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/cm280896.tw1.ru\/emn\/gomn\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 84
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:24:03 GMT
+< server: uvicorn
+< content-length: 5087
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.004432
+
+[2026-06-13T02:24:23+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/acessoscred.digital\/xd512\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 84
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:24:23 GMT
+< server: uvicorn
+< content-length: 5007
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.174997
+
+[2026-06-13T02:25:04+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/type-desktop.wixstudio.com\/us-en","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 89
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:25:03 GMT
+< server: uvicorn
+< content-length: 4986
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.762867
+
+[2026-06-13T02:28:12+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:28:12 GMT
+< server: uvicorn
+< content-length: 5277
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=15.624349
+
+[2026-06-13T02:30:29+08:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/example.com\/login?email=user@example.com&password=reset","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 111
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:30:29 GMT
+< server: uvicorn
+< content-length: 4965
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.274927
+
+[2026-06-13T02:32:02+08:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/localhost\/ShieldURL\/test-pages\/download-file.html","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 107
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:32:02 GMT
+< server: uvicorn
+< content-length: 4396
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.079737
+
+[2026-06-13T02:33:22+08:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/localhost\/ShieldURL\/test-pages\/download-file.html?login=verify&account=secure&update=banking&password=reset","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 165
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:33:22 GMT
+< server: uvicorn
+< content-length: 5263
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.098721
+
+[2026-06-13T02:36:19+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:36:18 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=3.88822
+
+[2026-06-13T02:41:38+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:41:38 GMT
+< server: uvicorn
+< content-length: 5274
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=2.285142
+
+[2026-06-13T02:46:39+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:46:39 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.167041
+
+[2026-06-13T02:51:44+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:51:43 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.963326
+
+[2026-06-13T02:53:03+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:53:02 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.643029
+
+[2026-06-13T02:54:47+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:54:47 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.711164
+
+[2026-06-13T02:55:12+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/www.youtube.com\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 73
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:55:12 GMT
+< server: uvicorn
+< content-length: 4338
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.043589
+
+[2026-06-13T02:55:30+08:00] POST http://127.0.0.1:8000/scan payload={"url":"http:\/\/allegrolokalnie.plsd9hshgss14xk.icu","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 91
+
+< HTTP/1.1 200 OK
+< date: Fri, 12 Jun 2026 18:55:29 GMT
+< server: uvicorn
+< content-length: 5388
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.064386
+
+[2026-06-17T19:10:40+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":false,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 137
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 11:10:39 GMT
+< server: uvicorn
+< content-length: 5278
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=33.416741
+
+[2026-06-17T19:27:05+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 11:27:05 GMT
+< server: uvicorn
+< content-length: 5275
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.547443
+
+[2026-06-17T19:31:00+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ecosupp.co.il\/?srsltid=AfmBOoqC2AasJlwOvtWgjvaLPESa334cIiXFaU5S7oEDAhBmQBYwJMBr","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 136
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 11:30:59 GMT
+< server: uvicorn
+< content-length: 5274
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.281439
+
+[2026-06-17T21:20:24+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ledgr-start.zapier.app\/en-us","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* connect to 127.0.0.1 port 8000 failed: Connection refused
+* Failed to connect to 127.0.0.1 port 8000 after 2038 ms: Couldn't connect to server
+* Closing connection
+curl_errno=7 curl_error=Failed to connect to 127.0.0.1 port 8000 after 2038 ms: Couldn't connect to server http_code=0 total=2.039418
+
+[2026-06-17T21:20:52+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ledgr-start.zapier.app\/en-us","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 85
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:20:51 GMT
+< server: uvicorn
+< content-length: 5086
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=6.858227
+
+[2026-06-17T21:21:47+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/virustotal.com\/gui\/url\/pending\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 91
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:21:46 GMT
+< server: uvicorn
+< content-length: 4962
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.885512
+
+[2026-06-17T21:28:04+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/gofoexpress.com\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 73
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:28:04 GMT
+< server: uvicorn
+< content-length: 4397
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=4.12283
+
+[2026-06-17T21:28:40+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/www.sejavero.com.br\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 77
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:28:39 GMT
+< server: uvicorn
+< content-length: 4373
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.072433
+
+[2026-06-17T21:47:17+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/www.y0utube.com\/","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 73
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:47:17 GMT
+< server: uvicorn
+< content-length: 5122
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=2.997746
+
+[2026-06-17T21:50:38+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/ledgr-start.zapier.app\/en-us","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 85
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:50:38 GMT
+< server: uvicorn
+< content-length: 5118
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=1.868267
+
+[2026-06-17T21:58:14+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/shieldurl.online\/auth\/login.php","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 89
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:58:14 GMT
+< server: uvicorn
+< content-length: 5097
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.887846
+
+[2026-06-17T21:59:24+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/www.maybank2u.com.my\/home\/m2u\/common\/login.do","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 105
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:59:23 GMT
+< server: uvicorn
+< content-length: 5273
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=6.349191
+
+[2026-06-17T21:59:48+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/www.maybank2u.com.my\/home\/m2u\/common\/login.do","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 105
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 13:59:54 GMT
+< server: uvicorn
+< content-length: 5271
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=12.201975
+
+[2026-06-17T22:01:00+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/shieldurl.online\/auth\/login.php","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 89
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 14:00:59 GMT
+< server: uvicorn
+< content-length: 5103
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.365646
+
+[2026-06-17T22:01:08+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/shieldurl.online\/auth\/login.php","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 89
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 14:01:08 GMT
+< server: uvicorn
+< content-length: 5102
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.35703
+
+[2026-06-17T22:08:45+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/shieldurl.online\/auth\/login.php","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 89
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 14:08:45 GMT
+< server: uvicorn
+< content-length: 4469
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=5.295941
+
+[2026-06-17T22:09:01+08:00] POST http://127.0.0.1:8000/scan payload={"url":"https:\/\/paypal-security-update.com\/login","clicked":true,"generate_llm":false}
+*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> POST /scan HTTP/1.1
+Host: 127.0.0.1:8000
+Content-Type: application/json
+Accept: application/json
+Content-Length: 89
+
+< HTTP/1.1 200 OK
+< date: Wed, 17 Jun 2026 14:09:00 GMT
+< server: uvicorn
+< content-length: 5192
+< content-type: application/json
+< 
+* Connection #0 to host 127.0.0.1 left intact
+curl_errno=0 curl_error= http_code=200 total=0.416871

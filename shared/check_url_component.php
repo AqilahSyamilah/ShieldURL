@@ -62,6 +62,7 @@
                                             <div class="summary-card" id="mitreSummaryCard">
                                                 <div class="summary-label">MITRE Technique</div>
                                                 <div class="summary-value" id="mitrePrimaryValue">Not Applicable</div>
+                                                <div id="mitrePrimaryExplanation" style="display: none; margin-top: 0.35rem; color: #4a5568; font-size: 0.88rem; font-weight: 500; line-height: 1.35;"></div>
                                             </div>
                                             <div class="summary-card">
                                                 <div class="summary-label">User Interaction Status</div>
@@ -108,6 +109,11 @@
                                     </div>
 
                                     <div class="dashboard-card fade-card" style="margin-top: 0.9rem;">
+                                        <label style="margin-bottom: 0.6rem;">Detection Analysis</label>
+                                        <ul id="detectionAnalysisList" style="padding-left: 20px; line-height: 1.6;"></ul>
+                                    </div>
+
+                                    <div class="dashboard-card fade-card" style="margin-top: 0.9rem;">
                                         <label style="margin-bottom: 0.6rem;">Recommended Actions</label>
                                         <div class="action-grid">
                                             <div class="action-card">
@@ -143,10 +149,19 @@
                                         <details class="technical-details" id="technicalDetailsPanel">
                                             <summary>Show technical details</summary>
                                             <div class="technical-json" id="analysisDetails">Loading...</div>
+                                            <section class="page-indicator-section" id="pageIndicatorSection">
+                                                <h4>Webpage Indicator Analysis</h4>
+                                                <div class="page-indicator-details" id="pageIndicatorDetails">Not Collected</div>
+                                            </section>
                                         </details>
                                         <div class="result-field" style="margin-top: 0.9rem; margin-bottom: 0;">
-                                            <label>MITRE ATT&CK Tags</label>
+                                            <label>MITRE ATT&CK Mapping</label>
+                                            <div style="font-size: 0.85rem; font-weight: 700; color: #4a5568; margin-bottom: 0.35rem;">Primary Technique:</div>
                                             <div id="mitreTags" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+                                            <div id="mitreSupportingSection" style="display: none; margin-top: 0.75rem;">
+                                                <div style="font-size: 0.85rem; font-weight: 700; color: #4a5568; margin-bottom: 0.35rem;">Potential Supporting Techniques (LLM-Assisted)</div>
+                                                <ul id="mitreSupportingTags" style="margin: 0; padding-left: 1.1rem; color: #4a5568;"></ul>
+                                            </div>
                                         </div>
                                     </div>
 

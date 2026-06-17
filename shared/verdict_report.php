@@ -318,6 +318,13 @@ function shield_build_verdict_report($context, $existingReport = [], $audience =
     $interactionStatus = shield_interaction_status($clicked);
 
     $report = is_array($existingReport) ? $existingReport : [];
+    $existingIncidentSummary = shield_text($report['incident_summary'] ?? '');
+    $existingDetectionAnalysis = is_array($report['detection_analysis'] ?? null)
+        ? $report['detection_analysis']
+        : [];
+    $existingMitreMapping = is_array($report['mitre_attack_mapping'] ?? null)
+        ? $report['mitre_attack_mapping']
+        : [];
     $report['incident_details'] = [
         'url' => $url,
         'final_verdict' => ucfirst($category),
@@ -441,6 +448,19 @@ function shield_build_verdict_report($context, $existingReport = [], $audience =
     $report['audience'] = $audience;
     $report['user_interaction_status'] = $interactionStatus;
     $report['model_policy'] = shield_dynamic_policy_text($category);
+    if ($existingIncidentSummary !== '') {
+        $report['incident_summary'] = $existingIncidentSummary;
+    }
+    if (!empty($existingDetectionAnalysis)) {
+        $report['detection_analysis'] = shield_unique_raw_list($existingDetectionAnalysis);
+    }
+    if ($category !== 'safe' && !empty($existingMitreMapping)) {
+        $report['mitre_attack_mapping'] = shield_unique_raw_list(array_merge(
+            shield_mitre_tag($category, []),
+            $existingMitreMapping
+        ));
+    }
+
     $report['containment_actions'] = shield_unique_list($report['containment_actions'] ?? []);
     $report['eradication_recovery_actions'] = shield_unique_list($report['eradication_recovery_actions'] ?? []);
     $report['post_incident_recommendations'] = shield_unique_list($report['post_incident_recommendations'] ?? []);

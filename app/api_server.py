@@ -14,11 +14,13 @@ from pydantic import BaseModel, Field, model_validator, validator
 
 try:
     from .features import MODEL_PATH
+    from .page_analyzer import analyze_page_indicators
     from .scan_url import run_scan
     from .llm_service import fallback_llm_report
     from .llm.chain import CHAT_LLM_TIMEOUT_SECONDS, generate_chat_answer, generate_ir_report
 except ImportError:
     from features import MODEL_PATH
+    from page_analyzer import analyze_page_indicators
     from scan_url import run_scan
     from llm_service import fallback_llm_report
     from llm.chain import CHAT_LLM_TIMEOUT_SECONDS, generate_chat_answer, generate_ir_report
@@ -99,6 +101,8 @@ class LLMReportRequest(BaseModel):
     verdict: str
     confidence: float
     risk: str
+    page_indicators: dict = Field(default_factory=dict)
+    lexical_indicators: dict = Field(default_factory=dict)
 
 
 class ChatRequest(BaseModel):
@@ -1714,12 +1718,37 @@ def scan(req: ScanRequest):
 def llm_report(req: LLMReportRequest):
     started = time.perf_counter()
     fallback_used = False
+    page_analysis_seconds = 0.0
+    page_indicators = req.page_indicators if isinstance(req.page_indicators, dict) else {}
+    verdict_text = str(req.verdict or "").lower()
+    risk_text = str(req.risk or "").lower()
+    should_analyze_page = (
+        not page_indicators
+        and ("phishing" in verdict_text or "suspicious" in verdict_text or risk_text in {"medium", "high"})
+        and "safe" not in verdict_text
+    )
+    if should_analyze_page:
+        page_started = time.perf_counter()
+        try:
+            # Static HTML indicator extraction only: no browser execution or JavaScript.
+            page_indicators = analyze_page_indicators(req.url)
+        except Exception as exc:
+            logger.warning("page indicator extraction skipped for llm_report url=%s error=%s", req.url, exc)
+            page_indicators = {
+                "success": False,
+                "error": str(exc),
+                "indicators_summary": [],
+            }
+        page_analysis_seconds = time.perf_counter() - page_started
+    llm_started = time.perf_counter()
     try:
         if os.environ.get("SKIP_LLM", "0") == "1":
             fallback_used = True
             report = fallback_llm_report({
                 "url": req.url,
                 "clicked": req.clicked,
+                "page_indicators": page_indicators,
+                "lexical_indicators": req.lexical_indicators,
                 "detection": {
                     "display_verdict": req.verdict,
                     "final_verdict": req.verdict,
@@ -1733,10 +1762,12 @@ def llm_report(req: LLMReportRequest):
                 "verdict": req.verdict,
                 "confidence": req.confidence,
                 "risk": req.risk,
+                "page_indicators": page_indicators,
+                "lexical_indicators": req.lexical_indicators,
             })
             fallback_used = bool(report.get("error") or report.get("parse_error"))
 
-        llm_seconds = round(time.perf_counter() - started, 3)
+        llm_seconds = round(time.perf_counter() - llm_started, 3)
         logger.info(
             "llm_report finished url=%s llm_seconds=%s cache_used=false fallback_used=%s",
             req.url,
@@ -1747,20 +1778,24 @@ def llm_report(req: LLMReportRequest):
             "success": True,
             "llm_report": report,
             "llm": report,
+            "page_indicators": page_indicators,
             "timing": {
                 "detection_seconds": 0,
+                "page_analysis_seconds": round(page_analysis_seconds, 3),
                 "llm_seconds": llm_seconds,
-                "total_seconds": llm_seconds,
+                "total_seconds": round(time.perf_counter() - started, 3),
                 "cache_used": False,
                 "fallback_used": fallback_used,
             },
         })
     except Exception as exc:
-        llm_seconds = round(time.perf_counter() - started, 3)
+        llm_seconds = round(time.perf_counter() - llm_started, 3)
         logger.warning("llm_report fallback url=%s error=%s", req.url, exc)
         report = fallback_llm_report({
             "url": req.url,
             "clicked": req.clicked,
+            "page_indicators": page_indicators,
+            "lexical_indicators": req.lexical_indicators,
             "detection": {
                 "display_verdict": req.verdict,
                 "final_verdict": req.verdict,
@@ -1772,10 +1807,12 @@ def llm_report(req: LLMReportRequest):
             "success": True,
             "llm_report": report,
             "llm": report,
+            "page_indicators": page_indicators,
             "timing": {
                 "detection_seconds": 0,
+                "page_analysis_seconds": round(page_analysis_seconds, 3),
                 "llm_seconds": llm_seconds,
-                "total_seconds": llm_seconds,
+                "total_seconds": round(time.perf_counter() - started, 3),
                 "cache_used": False,
                 "fallback_used": True,
             },

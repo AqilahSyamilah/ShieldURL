@@ -223,6 +223,17 @@ def _format_confidence_percent(confidence: Any) -> str:
 
 
 def _fallback_detection_analysis(scan_context: dict[str, Any], risky: bool) -> list[str]:
+    page_indicators = scan_context.get("page_indicators")
+    if not isinstance(page_indicators, dict):
+        detection = scan_context.get("detection")
+        page_indicators = detection.get("page_indicators") if isinstance(detection, dict) else {}
+    if isinstance(page_indicators, dict):
+        summary = page_indicators.get("indicators_summary")
+        if isinstance(summary, list):
+            cleaned_summary = [_safe_text(item) for item in summary if _safe_text(item)]
+            if cleaned_summary:
+                return cleaned_summary[:3]
+
     reasons = _extract_scan_value(
         scan_context,
         ("heuristic_reasons",),
@@ -479,6 +490,47 @@ def _drop_placeholder_actions(values: list[Any]) -> list[Any]:
     return cleaned
 
 
+def _page_indicator_mitre_mapping(scan_context: dict[str, Any], current_mapping: list[Any]) -> list[Any]:
+    decision = _authoritative_decision(scan_context)
+    if "safe" in decision or "legitimate" in decision:
+        return []
+
+    page_indicators = scan_context.get("page_indicators")
+    if not isinstance(page_indicators, dict):
+        detection = scan_context.get("detection")
+        page_indicators = detection.get("page_indicators") if isinstance(detection, dict) else {}
+    if not isinstance(page_indicators, dict):
+        page_indicators = {}
+
+    mappings = _safe_list(current_mapping)
+    lowered = [str(item).lower() for item in mappings]
+    if not any("t1566.002" in item for item in lowered):
+        mappings.insert(0, {
+            "id": "T1566.002",
+            "name": "Spearphishing Link",
+            "rationale": "The URL was classified as phishing and may lure users through a deceptive link.",
+        })
+
+    additions = []
+    if page_indicators.get("has_password_field") or page_indicators.get("has_email_field") or page_indicators.get("has_form"):
+        additions.append("Potential / LLM-assisted inference: Credential theft context supported by login/email/password form indicators.")
+    if page_indicators.get("has_download_link") or page_indicators.get("suspicious_file_extensions"):
+        additions.append("Potential / LLM-assisted inference: T1204.002 - Malicious File, supported by suspicious downloadable file indicators.")
+
+    try:
+        redirected = int(page_indicators.get("redirect_count") or 0) > 0
+    except (TypeError, ValueError):
+        redirected = False
+    if redirected:
+        additions.append("Potential / LLM-assisted inference: Redirection behavior supported by HTTP redirect evidence before landing.")
+
+    for item in additions:
+        if item.lower() not in [str(existing).lower() for existing in mappings]:
+            mappings.append(item)
+
+    return _truncate_list(_dedupe_mitre_items(mappings), 4)
+
+
 def _apply_post_processing(report: dict[str, Any], scan_context: dict[str, Any]) -> dict[str, Any]:
     fallback_report = fallback_llm_report(scan_context, report.get("error", "") or "Partial LLM output")
 
@@ -528,7 +580,7 @@ def _apply_post_processing(report: dict[str, Any], scan_context: dict[str, Any])
         report["post_incident_recommendations"] = fallback_report["post_incident_recommendations"]
     if not report.get("mitre_attack_mapping"):
         report["mitre_attack_mapping"] = fallback_report["mitre_attack_mapping"]
-    report["mitre_attack_mapping"] = _truncate_list(_dedupe_mitre_items(_safe_list(report.get("mitre_attack_mapping"))), 1)
+    report["mitre_attack_mapping"] = _page_indicator_mitre_mapping(scan_context, report.get("mitre_attack_mapping"))
     if not report["analyst_notes"]:
         report["analyst_notes"] = fallback_report["analyst_notes"]
 
@@ -550,7 +602,11 @@ def _build_prompt(scan_context: dict[str, Any]) -> str:
             "post_incident_recommendations max 2 items.",
             "user_advisory max 2 sentences and direct for end users.",
             "If clicked is false or unknown, do not assume compromise or require password reset.",
-            "Use at most 1 MITRE item. Prefer T1566.002 for deceptive phishing links when justified.",
+            "For phishing URLs, include T1566.002 - Spearphishing Link as the primary baseline technique when justified.",
+            "You may include up to 4 MITRE items total when supported by provided URL, lexical, or static page indicators.",
+            "Label additional inferred mappings with 'Potential / LLM-assisted inference:' and include a short evidence-based explanation in the same item.",
+            "Suggest MITRE ATT&CK techniques only when supported by provided indicators. Do not invent evidence. If evidence is weak, mark mapping as low confidence.",
+            "Use static page indicators as safe HTML evidence only; do not imply JavaScript execution or browser behavior was observed.",
             "If verdict is safe or low risk, do not describe the URL as phishing or malicious.",
             "Do not output placeholders, sample labels, example text, or generic templates.",
             "Always produce actionable recommendations based on scan_context.",
@@ -692,6 +748,7 @@ def fallback_llm_report(
             )
             report["generated_by"] = "fallback"
             report["error"] = str(error_message or "LLM timeout or unavailable")
+            report["mitre_attack_mapping"] = _page_indicator_mitre_mapping(context, report["mitre_attack_mapping"])
             return report
         report["incident_summary"] = (
             "ShieldURL classified the accessed URL as phishing after detecting high-risk URL signals consistent with a deceptive or malicious destination. "
@@ -719,6 +776,7 @@ def fallback_llm_report(
                 "rationale": "The URL appears to be a deceptive phishing link intended to lure user clicks.",
             }
         ]
+        report["mitre_attack_mapping"] = _page_indicator_mitre_mapping(context, report["mitre_attack_mapping"])
         report["analyst_notes"] = "LLM generation timed out or was unavailable; fallback phishing response guidance was returned."
     else:
         report["incident_summary"] = (

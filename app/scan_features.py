@@ -1,21 +1,16 @@
-import joblib
 try:
-    from .features import MODEL_PATH, features_dataframe
+    from .predict_from_features import predict_features
 except ImportError:
-    from features import MODEL_PATH, features_dataframe
+    from predict_from_features import predict_features
 
 
 def scan_from_features(features: dict):
-    model = joblib.load(MODEL_PATH)
-    expected_columns = list(getattr(model, "feature_names_in_", [])) or list(
-        getattr(model, "feature_columns_", [])
-    )
-    df = features_dataframe(features, expected_columns or None)
-    pred = model.predict(df)[0]
-    return "PHISHING" if int(pred) == 1 else "LEGITIMATE"
+    result = predict_features(features)
+    return result["status"]
+
 
 if __name__ == "__main__":
-    # Example input (you must provide values for all feature columns)
+    # Example input for manual model testing. The main app uses scan_url.run_scan().
     sample = {
         "UsingIP": 0,
         "LongURL": 1,
@@ -46,6 +41,6 @@ if __name__ == "__main__":
         "PageRank": 0,
         "GoogleIndex": 1,
         "LinksPointingToPage": 0,
-        "StatsReport": 0
+        "StatsReport": 0,
     }
     print("Result:", scan_from_features(sample))

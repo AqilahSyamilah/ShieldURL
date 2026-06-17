@@ -63,7 +63,31 @@ $analysis = safe_decode_report($row['analysis_result'] ?? '');
 $reportContext = $analysis;
 shield_apply_verdict_report($reportContext, $row, [], $reportAudience);
 $existingReport = $analysis['llm_report'] ?? [];
-if (is_array($existingReport) && !empty($existingReport) && (($existingReport['status'] ?? '') !== 'pending')) {
+$existingPageIndicators = $analysis['detection']['page_indicators'] ?? ($analysis['page_indicators'] ?? []);
+$existingDetectionAnalysis = $existingReport['detection_analysis'] ?? [];
+$hasPageIndicators = is_array($existingPageIndicators) && !empty($existingPageIndicators);
+$hasPageAwareAnalysis = false;
+if (is_array($existingDetectionAnalysis)) {
+    $joinedAnalysis = strtolower(json_encode($existingDetectionAnalysis));
+    $hasPageAwareAnalysis = (
+        strpos($joinedAnalysis, 'password') !== false
+        || strpos($joinedAnalysis, 'email') !== false
+        || strpos($joinedAnalysis, 'login') !== false
+        || strpos($joinedAnalysis, 'bank') !== false
+        || strpos($joinedAnalysis, 'payment') !== false
+        || strpos($joinedAnalysis, 'redirect') !== false
+        || strpos($joinedAnalysis, 'download') !== false
+        || strpos($joinedAnalysis, '.exe') !== false
+        || strpos($joinedAnalysis, '.zip') !== false
+        || strpos($joinedAnalysis, 'webpage') !== false
+        || strpos($joinedAnalysis, 'static html') !== false
+    );
+}
+$canUseCachedReport = is_array($existingReport)
+    && !empty($existingReport)
+    && (($existingReport['status'] ?? '') !== 'pending')
+    && (!$hasPageIndicators || $hasPageAwareAnalysis);
+if ($canUseCachedReport) {
     $llmReport = shield_apply_verdict_report($analysis, $row, $existingReport, $reportAudience);
     respond_json([
         'success' => true,
@@ -72,7 +96,9 @@ if (is_array($existingReport) && !empty($existingReport) && (($existingReport['s
         'llm_report' => $llmReport,
         'llm' => $llmReport,
         'llm_summary' => $llmReport['incident_summary'] ?? '',
+        'detection_analysis' => $llmReport['detection_analysis'] ?? [],
         'mitre_techniques' => $llmReport['mitre_attack_mapping'] ?? [],
+        'page_indicators' => $analysis['detection']['page_indicators'] ?? ($analysis['page_indicators'] ?? []),
         'nist_response' => $llmReport['containment_actions'] ?? [],
         'incident_response' => $llmReport['eradication_recovery_actions'] ?? [],
         'post_incident_recommendations' => $llmReport['post_incident_recommendations'] ?? [],
@@ -95,6 +121,8 @@ $payload = json_encode([
     'verdict' => $reportContext['display_status'] ?? ($analysis['display_status'] ?? ($analysis['overall']['display_verdict'] ?? $row['status'])),
     'confidence' => shield_unit_probability($reportContext['phishing_probability'] ?? ($analysis['phishing_probability'] ?? ($analysis['ml']['phishing_probability'] ?? $row['confidence_score']))),
     'risk' => $reportContext['risk_level'] ?? ($analysis['risk_level'] ?? ($row['risk_level'] ?? 'low')),
+    'page_indicators' => $analysis['detection']['page_indicators'] ?? ($analysis['page_indicators'] ?? []),
+    'lexical_indicators' => $analysis['features'] ?? ($analysis['ml']['features'] ?? ($analysis['detection']['features'] ?? [])),
 ]);
 
 if (!function_exists('curl_init')) {
@@ -136,6 +164,15 @@ $analysis['timing']['llm_seconds'] = $api['timing']['llm_seconds'] ?? null;
 $analysis['timing']['total_seconds'] = ($analysis['timing']['detection_seconds'] ?? 0) + ($api['timing']['llm_seconds'] ?? 0);
 $analysis['timing']['cache_used'] = false;
 $analysis['timing']['fallback_used'] = $api['timing']['fallback_used'] ?? false;
+if (isset($api['page_indicators']) && is_array($api['page_indicators'])) {
+    $analysis['page_indicators'] = $api['page_indicators'];
+    if (!isset($analysis['detection']) || !is_array($analysis['detection'])) {
+        $analysis['detection'] = [];
+    }
+    $analysis['detection']['page_indicators'] = $api['page_indicators'];
+}
+$analysis['detection_analysis'] = $llmReport['detection_analysis'] ?? [];
+$analysis['mitre_techniques'] = $llmReport['mitre_attack_mapping'] ?? [];
 
 $update = $conn->prepare('
     UPDATE url_logs
@@ -159,7 +196,9 @@ respond_json([
     'llm_report' => $llmReport,
     'llm' => $llmReport,
     'llm_summary' => $llmReport['incident_summary'] ?? '',
+    'detection_analysis' => $llmReport['detection_analysis'] ?? [],
     'mitre_techniques' => $llmReport['mitre_attack_mapping'] ?? [],
+    'page_indicators' => $analysis['detection']['page_indicators'] ?? ($analysis['page_indicators'] ?? []),
     'nist_response' => $llmReport['containment_actions'] ?? [],
     'incident_response' => $llmReport['eradication_recovery_actions'] ?? [],
     'post_incident_recommendations' => $llmReport['post_incident_recommendations'] ?? [],

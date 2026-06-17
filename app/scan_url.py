@@ -8,16 +8,28 @@ import traceback
 from typing import Any, Optional
 
 try:
-    from .features import LEXICAL_THRESHOLD_PATH, MODEL_PATH, extract_features, features_dataframe, get_domain
+    from .features import LEXICAL_THRESHOLD_PATH, MODEL_PATH, SUSPICIOUS_KEYWORDS, extract_features, features_dataframe, get_domain
+    from .page_analyzer import analyze_page_indicators
     from .llm.chain import generate_ir_report
     from .llm_service import fallback_llm_report
 except ImportError:
-    from features import LEXICAL_THRESHOLD_PATH, MODEL_PATH, extract_features, features_dataframe, get_domain
+    from features import LEXICAL_THRESHOLD_PATH, MODEL_PATH, SUSPICIOUS_KEYWORDS, extract_features, features_dataframe, get_domain
+    from page_analyzer import analyze_page_indicators
     from llm.chain import generate_ir_report
     from llm_service import fallback_llm_report
 
 
 AI_REPORT_FALLBACK_MESSAGE = "AI report unavailable, but detection result is still valid."
+TRUSTED_SECURITY_DOMAINS = {
+    "shieldurl.online",
+    "www.shieldurl.online",
+    "virustotal.com",
+    "www.virustotal.com",
+    "phishtank.org",
+    "www.phishtank.org",
+    "urlscan.io",
+    "www.urlscan.io",
+}
 
 
 def _load_lexical_threshold() -> float:
@@ -44,12 +56,42 @@ def _display_verdict(status: str, confidence: float) -> str:
     return "Safe"
 
 
-def _build_ir_llm_report(url: str, verdict: str, confidence: float, risk: str) -> dict[str, Any]:
+def _is_trusted_security_domain(domain: str) -> bool:
+    normalized = (domain or "").lower().strip()
+    return any(
+        normalized == trusted or normalized.endswith("." + trusted)
+        for trusted in TRUSTED_SECURITY_DOMAINS
+    )
+
+
+def _has_allowlist_blocking_signal(features: dict[str, Any]) -> bool:
+    return any(
+        [
+            features.get("UsingIP") == -1,
+            features.get("ShortURL") == -1,
+            features.get("Symbol@") == -1,
+            features.get("Redirecting//") == -1,
+            features.get("has_suspicious_tld") == 1,
+            float(features.get("query_param_count") or 0) >= 3,
+        ]
+    )
+
+
+def _build_ir_llm_report(
+    url: str,
+    verdict: str,
+    confidence: float,
+    risk: str,
+    features: Optional[dict[str, Any]] = None,
+    page_indicators: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     ir_scan_result = {
         "url": url,
         "verdict": verdict.upper(),
         "confidence": float(confidence),
         "risk": risk.upper(),
+        "lexical_indicators": features or {},
+        "page_indicators": page_indicators or {},
     }
 
     try:
@@ -156,9 +198,8 @@ def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = Fal
             status = "suspicious" if status == "safe" else status
             heuristic_reasons.append("contains obfuscated characters (leetspeak) often used in typosquatting")
 
-        # Login and account language often appears in lure URLs.
-        suspicious_keywords = ['login', 'secure', 'account', 'update', 'verify', 'wallet', 'banking']
-        if any(kw in lower_url for kw in suspicious_keywords):
+        # Sensitive account-update wording can raise a safe model result to suspicious.
+        if any(kw in lower_url for kw in SUSPICIOUS_KEYWORDS):
             if status == "safe":
                 status = "suspicious"
                 heuristic_reasons.append("contains sensitive keywords commonly targeted by phishers")
@@ -183,6 +224,16 @@ def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = Fal
         if model_status == "phishing":
             status = "phishing"
 
+        allowlist_applied = False
+        if _is_trusted_security_domain(domain) and not _has_allowlist_blocking_signal(features):
+            status = "safe"
+            confidence = min(float(confidence), max(_load_lexical_threshold() * 0.5, 0.01))
+            heuristic_reasons = [
+                reason for reason in heuristic_reasons
+                if "high-risk Top-Level Domain" not in reason
+            ]
+            allowlist_applied = True
+
         # Recalculate the risk level after the heuristic adjustments.
         risk_level = "low"
         if status == "phishing":
@@ -191,6 +242,21 @@ def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = Fal
             risk_level = "medium"
 
         detection_seconds = time.perf_counter() - start_detection
+
+        page_indicators = {}
+        page_analysis_seconds = 0.0
+        if status in {"suspicious", "phishing"}:
+            start_page_analysis = time.perf_counter()
+            try:
+                # Static HTML indicator extraction only: no browser, no JavaScript execution.
+                page_indicators = analyze_page_indicators(url)
+            except Exception as exc:
+                page_indicators = {
+                    "success": False,
+                    "error": str(exc),
+                    "indicators_summary": [],
+                }
+            page_analysis_seconds = time.perf_counter() - start_page_analysis
 
         start_llm = time.perf_counter()
         if not generate_llm:
@@ -219,7 +285,14 @@ def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = Fal
                 "user_advisory": AI_REPORT_FALLBACK_MESSAGE,
             }
         else:
-            llm_output = _build_ir_llm_report(url, _display_verdict(status, float(confidence)), float(confidence), risk_level)
+            llm_output = _build_ir_llm_report(
+                url,
+                _display_verdict(status, float(confidence)),
+                float(confidence),
+                risk_level,
+                features,
+                page_indicators,
+            )
         llm_seconds = time.perf_counter() - start_llm
 
         total_seconds = time.perf_counter() - start_total
@@ -236,7 +309,9 @@ def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = Fal
                 "phishing_probability": float(confidence),
                 "lexical_threshold": _load_lexical_threshold(),
                 "model_policy": (
-                    "No major phishing indicators were identified during analysis."
+                    "Trusted security analysis domain allowlist applied; no major phishing indicators were identified."
+                    if allowlist_applied
+                    else "No major phishing indicators were identified during analysis."
                     if status == "safe"
                     else (
                         "Several suspicious URL characteristics were identified during analysis."
@@ -246,10 +321,13 @@ def run_scan(url: str, clicked: Optional[bool] = False, generate_llm: bool = Fal
                 ),
                 "features": features,
                 "heuristic_reasons": heuristic_reasons,
+                "trusted_domain_allowlist": allowlist_applied,
+                "page_indicators": page_indicators,
             },
             "llm_report": llm_output,
             "timing": {
                 "detection_seconds": round(detection_seconds, 3),
+                "page_analysis_seconds": round(page_analysis_seconds, 3),
                 "llm_seconds": round(llm_seconds, 3),
                 "total_seconds": round(total_seconds, 3),
                 "cache_used": False,

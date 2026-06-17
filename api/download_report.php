@@ -57,6 +57,52 @@ function normalize_list($value)
     return array_values(array_filter($out));
 }
 
+function mitre_item_label($item)
+{
+    if (is_array($item)) {
+        $techId = $item['id'] ?? $item['technique_id'] ?? $item['tactic_id'] ?? '';
+        $techName = $item['name'] ?? $item['technique'] ?? $item['description'] ?? $item['tactic'] ?? '';
+        return trim($techId . ($techId && $techName ? ' - ' : '') . $techName);
+    }
+    return trim((string)$item);
+}
+
+function split_mitre_mapping($items)
+{
+    $prefix = 'Potential / LLM-assisted inference:';
+    $primary = [];
+    $supporting = [];
+    foreach (is_array($items) ? $items : [] as $item) {
+        $rawText = is_string($item) ? trim($item) : '';
+        $label = mitre_item_label($item);
+        if ($label === '') {
+            continue;
+        }
+        if ($rawText !== '' && stripos($rawText, $prefix) === 0) {
+            $supportingLabel = trim(substr($rawText, strlen($prefix)));
+            $supportingLabel = preg_replace('/^[-:]\s*/', '', $supportingLabel);
+            if ($supportingLabel !== '' && !in_array($supportingLabel, $supporting, true)) {
+                $supporting[] = $supportingLabel;
+            }
+            continue;
+        }
+        if (!in_array($label, $primary, true)) {
+            $primary[] = $label;
+        }
+    }
+    $primaryLabel = '';
+    foreach ($primary as $label) {
+        if (strpos($label, 'T1566.002') !== false) {
+            $primaryLabel = $label;
+            break;
+        }
+    }
+    return [
+        'primary' => $primaryLabel !== '' ? $primaryLabel : ($primary[0] ?? ''),
+        'supporting' => $supporting,
+    ];
+}
+
 function feature_value($features, $keys, $fallback = '')
 {
     foreach ($keys as $key) {
@@ -587,9 +633,12 @@ audit_log($conn, 'report_download', "Downloaded report #{$report['id']} for URL 
 
 $features = safe_decode($report['features'] ?? '', []);
 $analysis = safe_decode($report['analysis_result'] ?? '', []);
+$pageIndicators = $analysis['detection']['page_indicators'] ?? ($analysis['page_indicators'] ?? []);
 $reportAudience = $isAdmin ? 'admin' : 'user';
 $llmReport = shield_apply_verdict_report($analysis, $report, $analysis['llm_report'] ?? [], $reportAudience);
 $mitre = $llmReport['mitre_attack_mapping'] ?? [];
+$mitreSplit = split_mitre_mapping($mitre);
+$detectionAnalysis = normalize_list($llmReport['detection_analysis'] ?? []);
 $nistSteps = normalize_list($llmReport['containment_actions'] ?? []);
 $irSteps = normalize_list($llmReport['eradication_recovery_actions'] ?? []);
 $postIncidentSteps = normalize_list($llmReport['post_incident_recommendations'] ?? []);
@@ -627,7 +676,7 @@ $riskIndicators = shield_detection_evidence($url, $features);
 $userAdvisory = $llmReport['user_advisory'] ?? '';
 $executiveSummary = array_values(array_filter(array_merge(
     normalize_list($llmReport['incident_summary'] ?? ''),
-    normalize_list($llmReport['detection_analysis'] ?? [])
+    []
 )));
 if (!in_array($modelPolicy, $executiveSummary, true)) {
     $executiveSummary[] = $modelPolicy;
@@ -1041,6 +1090,18 @@ if ($reportAudience === 'user') {
             border-radius: 999px;
             padding: 8px 12px;
             font-weight: 800;
+        }
+        .mitre-subtitle {
+            width: 100%;
+            color: #475569;
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+        .mitre-supporting-list {
+            width: 100%;
+            margin: 0;
+            padding-left: 20px;
+            color: #334155;
         }
         .warning-card {
             display: grid;
@@ -1469,6 +1530,21 @@ if ($reportAudience === 'user') {
             </section>
 
             <section class="section-card">
+                <h2 class="section-title">Detection Analysis</h2>
+                <div class="summary-content">
+                    <ul class="summary-list">
+                        <?php if (!empty($detectionAnalysis)): ?>
+                            <?php foreach (array_slice($detectionAnalysis, 0, 8) as $item): ?>
+                                <li><?php echo h($item); ?></li>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <li>No additional detection analysis was provided.</li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+            </section>
+
+            <section class="section-card">
                 <h2 class="section-title"><?php echo h($reportAudience === 'admin' && $verdictCategory === 'phishing' ? 'NIST Incident Response Timeline' : 'Recommended Guidance'); ?></h2>
                 <div class="timeline">
                     <?php foreach ($timeline as $index => $phase): ?>
@@ -1489,18 +1565,21 @@ if ($reportAudience === 'user') {
 
             <?php if ($verdictCategory !== 'safe'): ?>
             <section class="section-card">
-                <h2 class="section-title"><?php echo h($verdictCategory === 'suspicious' ? 'Potentially Related MITRE ATT&CK Mapping' : 'MITRE ATT&CK Mapping'); ?></h2>
+                <h2 class="section-title">MITRE ATT&CK Mapping</h2>
                 <div class="tag-wrap">
-                    <?php if (!empty($mitre)): ?>
-                        <?php foreach ($mitre as $item): ?>
-                            <?php
-                            $techId = is_array($item) ? ($item['id'] ?? $item['technique_id'] ?? '') : '';
-                            $techName = is_array($item) ? ($item['name'] ?? $item['technique'] ?? $item['description'] ?? '') : (string)$item;
-                            ?>
-                            <span class="mitre-tag"><?php echo h(trim($techId . ($techId && $techName ? ' - ' : '') . $techName)); ?></span>
-                        <?php endforeach; ?>
+                    <?php if (!empty($mitreSplit['primary'])): ?>
+                        <div class="mitre-subtitle">Primary Technique:</div>
+                        <span class="mitre-tag"><?php echo h($mitreSplit['primary']); ?></span>
                     <?php else: ?>
                         <span class="mitre-tag">No ATT&CK technique mapped</span>
+                    <?php endif; ?>
+                    <?php if (!empty($mitreSplit['supporting'])): ?>
+                        <div class="mitre-subtitle">Potential Supporting Techniques (LLM-Assisted)</div>
+                        <ul class="mitre-supporting-list">
+                            <?php foreach ($mitreSplit['supporting'] as $item): ?>
+                                <li><?php echo h($item); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
                     <?php endif; ?>
                 </div>
             </section>
@@ -1528,6 +1607,36 @@ if ($reportAudience === 'user') {
                         <div class="tech-item">
                             <div class="metric-label">Technical Features</div>
                             <div class="evidence-value">No feature extraction data available.</div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <h3 class="section-title" style="font-size: 1rem; margin-top: 18px;">Webpage Indicator Analysis</h3>
+                <div class="tech-grid">
+                    <?php
+                    $pageIndicatorFields = [
+                        'page_title' => 'Page Title',
+                        'http_status' => 'HTTP Status',
+                        'redirect_count' => 'Redirect Count',
+                        'has_form' => 'Has Form',
+                        'has_password_field' => 'Has Password Field',
+                        'has_email_field' => 'Has Email Field',
+                        'has_bank_or_payment_keywords' => 'Has Bank or Payment Keywords',
+                        'has_download_link' => 'Has Download Link',
+                        'suspicious_file_extensions' => 'Suspicious File Extensions',
+                        'indicators_summary' => 'Indicators Summary',
+                    ];
+                    ?>
+                    <?php if (!empty($pageIndicators) && is_array($pageIndicators)): ?>
+                        <?php foreach ($pageIndicatorFields as $key => $label): ?>
+                            <div class="tech-item">
+                                <div class="metric-label"><?php echo h($label); ?></div>
+                                <div class="evidence-value"><?php echo h(display_feature_value($pageIndicators[$key] ?? 'Not Collected')); ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="tech-item">
+                            <div class="metric-label">Webpage Indicator Analysis</div>
+                            <div class="evidence-value">No webpage indicator data available.</div>
                         </div>
                     <?php endif; ?>
                 </div>
