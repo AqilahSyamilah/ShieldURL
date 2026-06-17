@@ -8,7 +8,7 @@ date_default_timezone_set('Asia/Kuala_Lumpur');
 class Database
 {
     
-    // // ===== LOCALHOST XAMPP =====
+    // ===== LOCALHOST XAMPP =====
     // private $host = "127.0.0.1";
     // private $db_name = "shieldurl";
     // private $username = "root";
@@ -74,6 +74,8 @@ class Database
             is_active BOOLEAN DEFAULT TRUE,
             account_status ENUM('active','pending_first_login','inactive') DEFAULT 'active',
             force_password_change BOOLEAN DEFAULT FALSE,
+            password_reset_token_hash VARCHAR(255) NULL,
+            password_reset_expires_at DATETIME NULL,
             mfa_secret VARCHAR(64) NULL,
             mfa_required BOOLEAN DEFAULT FALSE,
             mfa_configured BOOLEAN DEFAULT FALSE,
@@ -168,6 +170,8 @@ class Database
             "ALTER TABLE url_logs ADD COLUMN IF NOT EXISTS pdf_report_path VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status ENUM('active','pending_first_login','inactive') DEFAULT 'active'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token_hash VARCHAR(255) NULL",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires_at DATETIME NULL",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_secret VARCHAR(64) NULL",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_required BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_configured BOOLEAN DEFAULT FALSE"
@@ -185,6 +189,8 @@ class Database
 
         $this->addColumnIfMissing('users', 'account_status', "ENUM('active','pending_first_login','inactive') DEFAULT 'active'");
         $this->addColumnIfMissing('users', 'force_password_change', "BOOLEAN DEFAULT FALSE");
+        $this->addColumnIfMissing('users', 'password_reset_token_hash', "VARCHAR(255) NULL");
+        $this->addColumnIfMissing('users', 'password_reset_expires_at', "DATETIME NULL");
         $this->addColumnIfMissing('users', 'mfa_secret', "VARCHAR(64) NULL");
         $this->addColumnIfMissing('users', 'mfa_required', "BOOLEAN DEFAULT FALSE");
         $this->addColumnIfMissing('users', 'mfa_configured', "BOOLEAN DEFAULT FALSE");

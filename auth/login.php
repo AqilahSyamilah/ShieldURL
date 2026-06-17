@@ -311,6 +311,29 @@ if (isset($_SESSION['user_id'])) {
       color: #f44;
     }
 
+    .success-box {
+      background: rgba(220, 252, 231, 0.95);
+      border-left: 4px solid #22c55e;
+      color: #166534;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-link {
+      display: block;
+      text-align: right;
+      margin: -0.85rem 0 1.25rem;
+      color: #1d4ed8;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .form-link:hover {
+      text-decoration: underline;
+    }
+
     .login-footer {
       text-align: center;
       margin-top: 2rem;
@@ -378,6 +401,11 @@ if (isset($_SESSION['user_id'])) {
           <strong>Error:</strong> <?php echo htmlspecialchars($_GET['err']); ?>
         </div>
       <?php endif; ?>
+      <?php if (isset($_GET['reset'])): ?>
+        <div class="success-box">
+          Password reset successful. Please sign in with your new password.
+        </div>
+      <?php endif; ?>
 
       <form method="POST" action="login_process.php" id="loginForm" onsubmit="handleLogin(event)">
         <div class="form-group">
@@ -391,6 +419,7 @@ if (isset($_SESSION['user_id'])) {
           <input type="password" id="password" name="password" placeholder="Enter your password" required
             autocomplete="current-password">
         </div>
+        <a class="form-link" href="forgot_password.php">Forgot password?</a>
 
         <button type="submit" class="btn-login" id="loginBtn">
           <div class="loader"></div>
