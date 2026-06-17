@@ -244,6 +244,10 @@ $users_online = $stmt->fetch()['users_online'];
       background: linear-gradient(90deg, #f59e0b 0%, #facc15 100%);
     }
 
+    .detection-chart-bar.phishing {
+      background: linear-gradient(90deg, #dc2626 0%, #fca5a5 100%);
+    }
+
     .detection-chart-value {
       color: #0f172a;
       font-variant-numeric: tabular-nums;
@@ -2031,12 +2035,12 @@ $users_online = $stmt->fetch()['users_online'];
             <div class="dashboard-card detection-chart-card">
               <div class="detection-chart-header">
                 <div>
-                  <h3>Safe vs Suspicious Detection</h3>
-                  <p>Safe and suspicious verdict totals from all URL scans.</p>
+                  <h3>Detection Verdict Totals</h3>
+                  <p>Safe, suspicious, and phishing verdict totals from all URL scans.</p>
                 </div>
                 <div class="detection-chart-total" id="detectionChartTotal">0 detections</div>
               </div>
-              <div class="detection-chart" aria-label="Safe and suspicious detection graph">
+              <div class="detection-chart" aria-label="Safe, suspicious, and phishing detection graph">
                 <div class="detection-chart-row">
                   <div class="detection-chart-label">Safe</div>
                   <div class="detection-chart-track">
@@ -2050,6 +2054,13 @@ $users_online = $stmt->fetch()['users_online'];
                     <div class="detection-chart-bar suspicious" id="suspiciousDetectionBar"></div>
                   </div>
                   <div class="detection-chart-value" id="suspiciousDetectionCount">0</div>
+                </div>
+                <div class="detection-chart-row">
+                  <div class="detection-chart-label">Phishing</div>
+                  <div class="detection-chart-track">
+                    <div class="detection-chart-bar phishing" id="phishingDetectionBar"></div>
+                  </div>
+                  <div class="detection-chart-value" id="phishingDetectionCount">0</div>
                 </div>
               </div>
             </div>
@@ -3472,22 +3483,29 @@ $users_online = $stmt->fetch()['users_online'];
       const counts = data && typeof data === 'object' ? data : {};
       const safe = Number(counts.safe_detections ?? counts.safe ?? counts.detection_counts?.safe ?? 0);
       const suspicious = Number(counts.suspicious_detections ?? counts.suspicious ?? counts.detection_counts?.suspicious ?? 0);
+      const phishing = Number(counts.phishing_detections ?? counts.phishing ?? counts.detection_counts?.phishing ?? 0);
       const safeCount = Number.isFinite(safe) ? Math.max(0, safe) : 0;
       const suspiciousCount = Number.isFinite(suspicious) ? Math.max(0, suspicious) : 0;
-      const total = safeCount + suspiciousCount;
+      const phishingCount = Number.isFinite(phishing) ? Math.max(0, phishing) : 0;
+      const total = safeCount + suspiciousCount + phishingCount;
       const safePercent = total > 0 ? (safeCount / total) * 100 : 0;
       const suspiciousPercent = total > 0 ? (suspiciousCount / total) * 100 : 0;
+      const phishingPercent = total > 0 ? (phishingCount / total) * 100 : 0;
 
       const safeBar = document.getElementById('safeDetectionBar');
       const suspiciousBar = document.getElementById('suspiciousDetectionBar');
+      const phishingBar = document.getElementById('phishingDetectionBar');
       if (safeBar) safeBar.style.width = `${safePercent}%`;
       if (suspiciousBar) suspiciousBar.style.width = `${suspiciousPercent}%`;
+      if (phishingBar) phishingBar.style.width = `${phishingPercent}%`;
 
       const safeLabel = document.getElementById('safeDetectionCount');
       const suspiciousLabel = document.getElementById('suspiciousDetectionCount');
+      const phishingLabel = document.getElementById('phishingDetectionCount');
       const totalLabel = document.getElementById('detectionChartTotal');
       if (safeLabel) safeLabel.textContent = String(safeCount);
       if (suspiciousLabel) suspiciousLabel.textContent = String(suspiciousCount);
+      if (phishingLabel) phishingLabel.textContent = String(phishingCount);
       if (totalLabel) totalLabel.textContent = `${total} detection${total === 1 ? '' : 's'}`;
     }
 
